@@ -131,6 +131,14 @@
     font-size:14px;font-weight:600;margin-top:9px;width:100%}
 
   /* 提醒记录 */
+  /* 可折叠的表头：整行都能点，右侧箭头指示状态 */
+  .fold{cursor:pointer;-webkit-user-select:none;user-select:none;
+        display:flex;align-items:center;gap:6px}
+  .fold:active{opacity:.6}
+  .fold .arrow{flex-shrink:0;transition:transform .18s;color:var(--sub)}
+  .fold.closed .arrow{transform:rotate(-90deg)}
+  .fold .fold-hint{margin-left:auto;font-size:12px;color:var(--sub);font-weight:400}
+  .fold-body{overflow:hidden}
   .rec{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line);align-items:flex-start}
   .rec:last-child{border-bottom:0}
   .rec-main{flex:1;min-width:0}
@@ -268,18 +276,27 @@
       <button class="main blue" id="saveBtn">保 存</button>
     </div>
 
-    <!-- 记录 -->
+    <!-- 记录（默认折叠，点标题展开） -->
     <div class="card">
-      <h2>提醒记录 <span id="count" style="color:var(--sub);font-weight:400;font-size:13.5px"></span></h2>
-      <div class="hint">
-        <span class="dot" id="saveDot"></span><span id="saveState">正在检查存储…</span>
-        <span id="monLine" style="display:block;margin-top:3px"></span>
-      </div>
-      <div id="list"></div>
-      <div class="row" style="margin-top:13px">
-        <button class="ghost" id="refreshBtn">刷新行情</button>
-        <button class="ghost" id="testBtn">测试推送</button>
-        <button class="ghost" id="copyBtn">复制配置</button>
+      <h2 class="fold closed" id="recToggle" role="button" tabindex="0"
+          aria-expanded="false" aria-controls="recBody">
+        <svg class="arrow" viewBox="0 0 24 24" width="15" height="15" fill="none"
+             stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
+             stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        提醒记录<span id="count" style="color:var(--sub);font-weight:400;font-size:13.5px"></span>
+        <span class="fold-hint" id="foldHint"></span>
+      </h2>
+      <div class="fold-body" id="recBody" style="display:none">
+        <div class="hint" style="margin-top:2px">
+          <span class="dot" id="saveDot"></span><span id="saveState">正在检查存储…</span>
+          <span id="monLine" style="display:block;margin-top:3px"></span>
+        </div>
+        <div id="list"></div>
+        <div class="row" style="margin-top:13px">
+          <button class="ghost" id="refreshBtn">刷新行情</button>
+          <button class="ghost" id="testBtn">测试推送</button>
+          <button class="ghost" id="copyBtn">复制配置</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1875,6 +1892,11 @@ function delRecord(id) {
 function render() {
   const box = $("list");
   $("count").textContent = records.length ? `共 ${records.length} 条` : "";
+  // 折叠时右边那行小字要跟着条数更新（没记录就不提示"点这里展开"）
+  const hint = $("foldHint");
+  if (hint && $("recToggle").classList.contains("closed")) {
+    hint.textContent = records.length ? "点这里展开" : "";
+  }
   if (!records.length) {
     box.innerHTML = `<div class="empty">还没有记录<br>在上面「A 添加提醒」里选一只股票、填个条件，<br>点保存就会自动开始盯盘</div>`;
     return;
@@ -1906,6 +1928,10 @@ function fmtTime(ts) {
 let filling = false;
 async function fillPrices() {
   if (filling) return;
+  // 收起时列表是 hidden，拉了也看不见，白费一次网络请求
+  const body = $("recBody");
+  if (body && body.style.display === "none") return;
+
   const codes = [...new Set(records.map(r => r.code))];
   if (!codes.length) return;
   filling = true;
@@ -1933,6 +1959,52 @@ function updateSaveState() {
   $("saveState").textContent = healthy
     ? `存储正常，已保存 ${records.length} 条记录`
     : "浏览器存储不可用，保存会失败";
+}
+
+/* ---------------- 提醒记录的折叠 ----------------
+   默认收起，只留标题和条数，省得把上面「添加提醒」挤下去。
+   展开状态记在 localStorage 里，下次打开保持用户的选择。
+   ------------------------------------------------------------------ */
+
+const FOLD_KEY = "stock_alert_records_open";
+
+function setRecordsFold(open, save) {
+  const head = $("recToggle");
+  const body = $("recBody");
+  if (!head || !body) return;
+
+  head.classList.toggle("closed", !open);
+  head.setAttribute("aria-expanded", open ? "true" : "false");
+  body.style.display = open ? "" : "none";
+  $("foldHint").textContent = open ? "" : (records.length ? "点这里展开" : "");
+
+  if (save) {
+    try { localStorage.setItem(FOLD_KEY, open ? "1" : "0"); } catch (e) { /* 忽略 */ }
+  }
+  // 展开时才值得去拉行情（收起时列表是 hidden，拉了也看不见）
+  if (open) fillPrices();
+}
+
+function initRecordsFold() {
+  let open = false;                     // 默认收起
+  try {
+    const saved = localStorage.getItem(FOLD_KEY);
+    if (saved !== null) open = saved === "1";
+  } catch (e) { /* 存储不可用时就用默认值 */ }
+
+  setRecordsFold(open, false);
+
+  const head = $("recToggle");
+  head.addEventListener("click", () => {
+    setRecordsFold(head.classList.contains("closed"), true);
+  });
+  // 键盘可达：回车/空格也能展开收起
+  head.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setRecordsFold(head.classList.contains("closed"), true);
+    }
+  });
 }
 
 /* ==========================================================================
@@ -2131,6 +2203,8 @@ $("testBtn").addEventListener("click", async () => {
   if (!STOCKS.length) toast("股票清单没加载出来（stocks.js 缺失）", "err");
   updateSaveState();
   render();
+  // 放在 render 之后：折叠提示要根据已有条数来决定显不显示
+  initRecordsFold();
 
   const r = await syncAlertsToMonitor(true);   // 顺带探测后台是否可用
   if (r) await refreshMon(true);
