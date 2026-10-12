@@ -1,0 +1,2148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="干死狗庄">
+<meta name="theme-color" content="#f5f5f7">
+<title>干死狗庄</title>
+<!-- 图标：红色圆底 + 白色「股」字，内联 SVG，不依赖外部文件 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%23d92b2b'/%3E%3Ctext x='50' y='70' font-size='58' text-anchor='middle' fill='%23fff' font-family='PingFang SC,Microsoft YaHei,sans-serif' font-weight='bold'%3E%E8%82%A1%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%23d92b2b'/%3E%3Ctext x='50' y='70' font-size='58' text-anchor='middle' fill='%23fff' font-family='PingFang SC,Microsoft YaHei,sans-serif' font-weight='bold'%3E%E8%82%A1%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#f5f5f7; --card:#fff; --fg:#1c1c1e; --sub:#8a8a8e;
+    --line:#e6e6ea; --accent:#d92b2b; --blue:#0a84ff; --danger:#ff3b30; --ok:#30a350;
+    --field:#f0f0f3; --shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#000; --card:#1c1c1e; --fg:#fff; --sub:#98989d; --line:#2c2c2e;
+           --field:#2c2c2e; --shadow:none; --accent:#ff453a; }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;overflow-x:hidden}
+  body{
+    background:var(--bg);color:var(--fg);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 40px);
+    max-width:1180px;margin:0 auto;
+  }
+
+  /* 顶部：图标和副标题并排对齐（不显示软件名，名字只在主屏图标和网页标题上） */
+  header{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+  .logo{width:40px;height:40px;flex-shrink:0}
+  .lead{color:var(--sub);font-size:12.5px;line-height:1.45}
+
+  /* 双栏 */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  @media (max-width:860px){ .cols{grid-template-columns:1fr} }
+  .col{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .col-title{
+    font-size:13px;font-weight:700;color:var(--accent);letter-spacing:.5px;
+    padding:0 2px 2px;display:flex;align-items:center;gap:6px;
+  }
+  .col-title .bar{width:3px;height:14px;background:var(--accent);border-radius:2px}
+
+  .card{background:var(--card);border-radius:14px;padding:15px;box-shadow:var(--shadow)}
+  .card h2{font-size:15.5px;margin:0 0 3px;display:flex;align-items:center;gap:6px}
+  .card h2 .n{
+    background:var(--accent);color:#fff;width:19px;height:19px;border-radius:50%;
+    font-size:12px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .hint{color:var(--sub);font-size:12px;margin-bottom:11px;line-height:1.5}
+
+  label{display:block;font-size:12px;color:var(--sub);margin:12px 0 6px;font-weight:500}
+  input,select,textarea{
+    width:100%;padding:12px 13px;font-size:16px;font-family:inherit;
+    background:var(--field);color:var(--fg);
+    border:1.5px solid transparent;border-radius:11px;outline:none;
+    -webkit-appearance:none;appearance:none;
+  }
+  textarea{resize:vertical;min-height:96px;line-height:1.55;font-size:15px}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);background:var(--card)}
+  input::placeholder,textarea::placeholder{color:var(--sub)}
+  select{background-image:linear-gradient(45deg,transparent 50%,var(--sub) 50%),linear-gradient(135deg,var(--sub) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 51%,calc(100% - 13px) 51%;
+    background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:36px}
+  .row{display:flex;gap:9px}
+  .row>*{flex:1;min-width:0}
+
+  /* 窄屏：让弹性行自动换行，避免按钮被挤出屏幕 */
+  @media (max-width:560px){
+    .card{padding:13px}
+    .row{flex-wrap:wrap}
+    .row>*{flex:1 1 46%}
+    button.main{font-size:16px;padding:13px}
+    .logo{width:34px;height:34px}
+    .lead{margin-left:0}
+    .cond-chips{gap:4px}
+    .chip{font-size:11.5px;padding:3px 8px}
+  }
+
+  .ac{position:relative}
+  .ac-list{
+    position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:60;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,.16);max-height:270px;overflow:auto;display:none;
+  }
+  .ac-list.on{display:block}
+  .ac-item{padding:10px 13px;cursor:pointer;display:flex;justify-content:space-between;
+    align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+  .ac-item:last-child{border-bottom:0}
+  .ac-item:hover,.ac-item.sel{background:var(--field)}
+  .ac-name{font-weight:600;font-size:14.5px}
+  .ac-code{color:var(--sub);font-size:12px;font-variant-numeric:tabular-nums;flex-shrink:0}
+
+  .picked{display:none;margin-top:9px;padding:10px 12px;background:var(--field);
+    border-radius:11px;font-size:13.5px;align-items:center;gap:7px}
+  .picked.on{display:flex}
+  .picked b{font-size:14.5px}
+  .picked .x{margin-left:auto;border:0;background:none;color:var(--sub);font-size:18px;
+    padding:0 4px;cursor:pointer;line-height:1;font-family:inherit}
+
+  button{font-family:inherit;cursor:pointer;border:0;transition:opacity .15s}
+  button:active{opacity:.65}
+  button:disabled{opacity:.45;cursor:default}
+  button.main{width:100%;padding:14px;font-size:16.5px;font-weight:600;
+    color:#fff;background:var(--accent);border-radius:12px;margin-top:14px}
+  button.blue{background:var(--blue)}
+  button.ghost{background:var(--field);color:var(--accent);padding:10px 13px;
+    border-radius:10px;font-size:13.5px;font-weight:500}
+
+  /* 分析结果框 */
+  .analysis{margin-top:12px;border:1.5px solid var(--line);border-radius:12px;
+    padding:13px;font-size:14px;line-height:1.65;display:none}
+  .analysis.on{display:block}
+  .analysis.ok{border-color:#a8dfb9;background:rgba(48,163,80,.06)}
+  .analysis.ask{border-color:#ffd48a;background:rgba(255,170,0,.07)}
+  .analysis.err{border-color:#ffb3ae;background:rgba(255,59,48,.06)}
+  @media (prefers-color-scheme: dark){
+    .analysis.ok{border-color:#1f6b37;background:rgba(48,163,80,.12)}
+    .analysis.ask{border-color:#7a5b12;background:rgba(255,170,0,.12)}
+    .analysis.err{border-color:#7a2a25;background:rgba(255,59,48,.12)}
+  }
+  .analysis .hd{font-weight:700;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+  .parsed{background:var(--field);border-radius:9px;padding:9px 11px;margin:8px 0;font-size:13px}
+  .parsed div{display:flex;gap:8px;padding:2px 0}
+  .parsed .k{color:var(--sub);min-width:62px;flex-shrink:0}
+  .analysis .qbtn{background:var(--accent);color:#fff;padding:9px 14px;border-radius:9px;
+    font-size:14px;font-weight:600;margin-top:9px;width:100%}
+
+  /* 提醒记录 */
+  .rec{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+  .rec:last-child{border-bottom:0}
+  .rec-main{flex:1;min-width:0}
+  .rec-name{font-weight:600;font-size:15px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+  .rec-code{color:var(--sub);font-size:12px;font-variant-numeric:tabular-nums}
+  .rec-cond{margin-top:4px;font-size:13px;opacity:.9}
+  .rec-time{margin-top:2px;font-size:11.5px;color:var(--sub)}
+  .rec-right{text-align:right;flex-shrink:0}
+  .px{font-size:14.5px;font-variant-numeric:tabular-nums;font-weight:600}
+  .chg{font-size:11.5px;font-variant-numeric:tabular-nums}
+  .up{color:#ff3b30}.down{color:#00a05a}.flat{color:var(--sub)}
+  @media (prefers-color-scheme: dark){.up{color:#ff453a}.down{color:#32d74b}}
+  .del{border:0;background:none;color:var(--danger);font-size:19px;cursor:pointer;
+    padding:2px 0 2px 9px;line-height:1;font-family:inherit}
+
+  /* 问财结果 */
+  .res{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center}
+  .res:last-child{border-bottom:0}
+  .tick{width:21px;height:21px;border-radius:50%;background:var(--ok);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .res-main{flex:1;min-width:0}
+  .res-name{font-weight:600;font-size:14.5px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+  .res-why{margin-top:3px;font-size:12px;color:var(--sub);line-height:1.5}
+  .res-right{text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+  .empty{text-align:center;color:var(--sub);padding:22px 8px;font-size:13.5px;line-height:1.7}
+  .bar{height:4px;background:var(--field);border-radius:3px;overflow:hidden;margin-top:10px;display:none}
+  .bar.on{display:block}
+  .bar>i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+  .cond-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .chip{background:var(--field);border-radius:7px;padding:4px 9px;font-size:12px;
+    display:flex;align-items:center;gap:5px}
+  .chip b{font-weight:600}
+  .chip .rm{color:var(--sub);cursor:pointer;font-size:14px;line-height:1}
+
+  /* 语音输入按钮 */
+  .mic{
+    display:flex;align-items:center;justify-content:center;gap:7px;
+    width:100%;margin-top:9px;padding:11px;font-size:14.5px;font-weight:600;
+    color:var(--accent);background:var(--field);border:1.5px solid transparent;
+    border-radius:11px;font-family:inherit;cursor:pointer;
+    transition:background .15s,border-color .15s,transform .1s;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  }
+  .mic:active{transform:scale(.985)}
+  .mic.listening{
+    background:var(--accent);color:#fff;border-color:var(--accent);
+    animation:pulse 1.1s infinite;
+  }
+  .mic.unsupported{opacity:.5}
+  @keyframes pulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(217,43,43,.45)}
+    50%{box-shadow:0 0 0 9px rgba(217,43,43,0)}
+  }
+
+  /* 图片上传区 */
+  .drop{
+    border:2px dashed var(--line);border-radius:13px;padding:20px 14px;
+    text-align:center;cursor:pointer;color:var(--sub);
+    transition:border-color .18s,background .18s,color .18s;
+  }
+  .drop:hover,.drop.hover{
+    border-color:var(--accent);color:var(--accent);
+    background:rgba(217,43,43,.05);
+  }
+  .drop-t{font-size:14px;font-weight:600;margin-top:8px;color:var(--fg)}
+  .drop-s{font-size:11.5px;margin-top:5px;line-height:1.5}
+
+  #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 22px);
+    transform:translateX(-50%) translateY(150%);z-index:200;
+    background:#1c1c1e;color:#fff;padding:13px 19px;border-radius:14px;
+    font-size:14px;line-height:1.55;max-width:90vw;box-shadow:0 12px 34px rgba(0,0,0,.32);
+    transition:transform .28s cubic-bezier(.2,.9,.3,1.2);text-align:center;white-space:pre-line}
+  #toast.on{transform:translateX(-50%) translateY(0)}
+  #toast.ok{background:#1d7a3a}
+  #toast.err{background:#b3261e}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:5px}
+  .dot.off{background:var(--sub)}
+  kbd{background:var(--field);border-radius:5px;padding:1px 5px;font-size:11.5px}
+</style>
+</head>
+<body>
+
+<header>
+  <svg class="logo" viewBox="0 0 100 100" aria-label="干死狗庄">
+    <circle cx="50" cy="50" r="48" fill="#d92b2b"/>
+    <text x="50" y="70" font-size="58" text-anchor="middle" fill="#fff"
+          font-family="PingFang SC,Microsoft YaHei,sans-serif" font-weight="bold">股</text>
+  </svg>
+  <div class="lead">添加提醒 · 条件选股 · 按图找相似</div>
+</header>
+
+<div class="cols">
+
+  <!-- ==================== 左栏：到价提醒 ==================== -->
+  <div class="col">
+    <div class="col-title"><span class="bar"></span>到价提醒 · 设置与管理</div>
+
+    <!-- 手动添加 -->
+    <div class="card">
+      <h2><span class="n">A</span>添加提醒</h2>
+      <div class="hint">代码可搜数字、名称、拼音首字母（如 gzmt）。</div>
+
+      <label for="code">股票代码</label>
+      <div class="ac">
+        <input id="code" type="text" inputmode="search" autocomplete="off" autocapitalize="off"
+               spellcheck="false" placeholder="600519 / 茅台 / gzmt">
+        <div class="ac-list" id="acList"></div>
+      </div>
+      <div class="picked" id="picked"></div>
+
+      <div class="row">
+        <div>
+          <label for="type">条件类型</label>
+          <select id="type">
+            <option value="price">价格</option>
+            <option value="pct">当日涨跌幅</option>
+          </select>
+        </div>
+        <div>
+          <label for="dir">方向</label>
+          <select id="dir">
+            <option value="up">涨到 / 涨幅达到</option>
+            <option value="down">跌到 / 跌幅达到</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="value" id="valLabel">触发价格（元）</label>
+      <input id="value" type="text" inputmode="decimal" placeholder="例如 1300">
+      <div class="hint" id="valHint" style="margin:6px 0 0"></div>
+
+      <label for="note">备注（可留空）</label>
+      <input id="note" type="text" maxlength="40" placeholder="例如 突破前高">
+
+      <button class="main blue" id="saveBtn">保 存</button>
+    </div>
+
+    <!-- 记录 -->
+    <div class="card">
+      <h2>提醒记录 <span id="count" style="color:var(--sub);font-weight:400;font-size:13.5px"></span></h2>
+      <div class="hint">
+        <span class="dot" id="saveDot"></span><span id="saveState">正在检查存储…</span>
+        <span id="monLine" style="display:block;margin-top:3px"></span>
+      </div>
+      <div id="list"></div>
+      <div class="row" style="margin-top:13px">
+        <button class="ghost" id="refreshBtn">刷新行情</button>
+        <button class="ghost" id="testBtn">测试推送</button>
+        <button class="ghost" id="copyBtn">复制配置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 右栏：筛股票 + 找相似 ==================== -->
+  <div class="col">
+    <div class="col-title"><span class="bar"></span>选股</div>
+
+    <div class="card">
+      <h2><span class="n">B</span>条件选股 · 按图找相似</h2>
+      <div class="hint">
+        写条件就扫全市场筛股票；丢一张 K 线截图就找形态相似的票。<br>
+        每只都会标 <b>√</b>（符合）或说明为什么不确定。
+        <kbd>Enter</kbd> 换行　<kbd>Ctrl</kbd>+<kbd>Enter</kbd> 执行
+      </div>
+
+      <textarea id="askText" placeholder="筛股票：市盈率低于10的银行股
+筛股票：今天涨幅超过5%的半导体
+筛股票：市值大于1000亿 换手率低于1%
+找相似：把 K 线截图拖进来，或按 Ctrl+V 粘贴"></textarea>
+
+      <!-- 语音输入：按住说话，松手变文字 -->
+      <button class="mic" id="micBtn" type="button">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="2" width="6" height="12" rx="3"/>
+          <path d="M5 11a7 7 0 0 0 14 0"/>
+          <line x1="12" y1="18" x2="12" y2="22"/>
+        </svg>
+        <span id="micLabel">按住说话</span>
+      </button>
+
+      <div class="drop" id="dropZone" style="margin-top:10px">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="3"/>
+          <path d="M3 16l4-4 3 3 4-5 7 7"/>
+          <circle cx="8.5" cy="8.5" r="1.3"/>
+        </svg>
+        <div class="drop-t">要按图找相似？把 K 线截图拖进来</div>
+        <div class="drop-s" id="fileName">
+          或点这里选图、<kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴 · 图片只在你浏览器里处理，不上传
+        </div>
+        <input type="file" id="imgInput" accept="image/png,image/*" hidden>
+      </div>
+
+      <div class="row" id="imgOpts" style="margin-top:11px;display:none">
+        <div>
+          <label for="klt">截图是什么周期？</label>
+          <select id="klt">
+            <option value="day">日线</option>
+            <option value="week">周线</option>
+            <option value="month">月线</option>
+          </select>
+        </div>
+        <div>
+          <label for="scanScope">扫描范围</label>
+          <select id="scanScope">
+            <option value="all">全市场 5571 只（约 15 秒）</option>
+            <option value="top800">热门 800 只（约 2 秒）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:11px">
+        <button class="main blue" id="askBtn" style="margin-top:0">开始选股</button>
+        <button class="ghost" id="clearBtn" style="flex:0 0 74px">清空</button>
+      </div>
+      <div class="bar" id="askBar"><i></i></div>
+      <div class="analysis" id="askOut"></div>
+    </div>
+
+    <div class="card">
+      <h2>可用条件</h2>
+      <div class="hint" style="margin-bottom:8px">这些指标我都能筛选，直接写进上面的框：</div>
+      <div class="cond-chips" id="fieldChips"></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="stocks.js"></script>
+<script src="industry.js"></script>
+<script src="vision.js"></script>
+<script>
+/* ==========================================================================
+   干死狗庄 · 到价提醒 + 条件选股 + 按图找相似
+   - 提醒记录存 localStorage，写完必读回校验
+   - 保存后自动交给后台盯盘（monitor.py），到价推送到手机
+   - 行情走腾讯公开接口（带 CORS，浏览器可直连）
+   - 股票清单与行业标签内置，搜索离线可用
+   - 条件筛股：规则式中文解析 + 全市场扫描，不依赖任何大模型
+   ========================================================================== */
+
+const LS_KEY = "stock_alert_records_v1";
+const QUOTE_API = "https://qt.gtimg.cn/q=";
+const STOCKS = window.STOCKS || [];
+const INDUSTRY = window.INDUSTRY || {};
+
+let records = [];
+let picked = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
+  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ---------------- 提示条 ---------------- */
+let toastTimer = null;
+function toast(text, kind) {
+  const t = $("toast");
+  t.textContent = text;
+  t.className = "on" + (kind ? " " + kind : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ""; }, kind === "err" ? 5600 : 3600);
+}
+
+/* ==========================================================================
+   一、行情
+   ========================================================================== */
+
+/** 按代码猜市场前缀 */
+function guessPrefix(code) {
+  if (/^(60|68|51|58|56|50|11|90)/.test(code)) return "sh";
+  if (/^(43|83|87|88|92)/.test(code)) return "bj";
+  return "sz";
+}
+
+/** 解析一行腾讯行情，返回结构化对象 */
+function parseQuote(code, fields) {
+  const num = i => {
+    const v = parseFloat(fields[i]);
+    return isFinite(v) ? v : 0;
+  };
+  return {
+    code,
+    name: (fields[1] || "").trim(),
+    price: num(3),
+    prevClose: num(4),
+    open: num(5),
+    volume: num(6),            // 手
+    time: fields[30] || "",
+    change: num(31),
+    changePct: num(32),
+    high: num(33),
+    low: num(34),
+    amount: num(37) * 10000,   // 成交额（元）
+    turnover: num(38),         // 换手率 %
+    pe: num(39),               // 市盈率(动)
+    amplitude: num(43),        // 振幅 %
+    floatCap: num(44),         // 流通市值（亿）
+    totalCap: num(45),         // 总市值（亿）
+    pb: num(46),               // 市净率
+    limitUp: num(47),          // 涨停价
+    limitDown: num(48),        // 跌停价
+  };
+}
+
+/** 批量取行情（每批 60 只） */
+async function fetchMany(codes) {
+  const out = {};
+  if (!codes.length) return out;
+  for (let i = 0; i < codes.length; i += 60) {
+    const batch = codes.slice(i, i + 60);
+    try {
+      const res = await fetch(QUOTE_API + batch.map(c => guessPrefix(c) + c).join(","),
+        { cache: "no-store" });
+      const text = new TextDecoder("gbk").decode(await res.arrayBuffer());
+      text.split(";").forEach(line => {
+        const m = line.match(/v_([a-z]{2})(\d{6})="([^"]*)"/);
+        if (!m) return;
+        const f = m[3].split("~");
+        if (f.length < 50) return;
+        const q = parseQuote(m[2], f);
+        if (q.price > 0) out[m[2]] = q;
+      });
+    } catch (e) { /* 单批失败不影响其它 */ }
+  }
+  return out;
+}
+
+async function fetchQuote(code) {
+  const r = await fetchMany([code]);
+  return r[code] || null;
+}
+
+/* ==========================================================================
+   二、中文条件解析（规则式，不依赖大模型）
+   ========================================================================== */
+
+/* 可筛选的指标。key 与行情字段一一对应，方便直接用。 */
+const FIELDS = [
+  { key: "price",     label: "现价",       unit: "元",  aliases: ["股价", "价格", "现价", "报价"] },
+  { key: "changePct", label: "涨跌幅",     unit: "%",   aliases: ["涨幅", "跌幅", "涨跌", "涨跌幅度"] },
+  { key: "pe",        label: "市盈率",     unit: "倍",  aliases: ["pe", "市盈", "本益比"] },
+  { key: "pb",        label: "市净率",     unit: "倍",  aliases: ["pb", "市净", "净资产"] },
+  { key: "totalCap",  label: "总市值",     unit: "亿",  aliases: ["市值", "总市值", "盘子"] },
+  { key: "floatCap",  label: "流通市值",   unit: "亿",  aliases: ["流通市值", "流通盘"] },
+  { key: "turnover",  label: "换手率",     unit: "%",   aliases: ["换手", "换手率"] },
+  { key: "amount",    label: "成交额",     unit: "亿",  aliases: ["成交额", "成交金额", "量能"] },
+  { key: "volume",    label: "成交量",     unit: "手",  aliases: ["成交量", "量"] },
+  { key: "amplitude", label: "振幅",       unit: "%",   aliases: ["振幅"] },
+];
+
+/** 比较符的中文说法 */
+const OPS = [
+  { op: "<=", words: ["低于", "小于", "不到", "不足", "少于", "不超过", "<=", "＜", "≤"] },
+  { op: ">=", words: ["高于", "大于", "超过", "多于", "至少", "不低于", ">=", "＞", "≥"] },
+  { op: "<",  words: ["小于", "低于", "<", "＜"] },
+  { op: ">",  words: ["大于", "高于", "超过", ">", "＞"] },
+  { op: "==", words: ["等于", "=", "=="] },
+];
+
+/** 中文数字 → 阿拉伯数字（只处理常见量级） */
+function cnNum(s) {
+  const map = { 零:0, 一:1, 二:2, 两:2, 三:3, 四:4, 五:5, 六:6, 七:7, 八:8, 九:9, 十:10 };
+  if (/^\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+  if (s === "十") return 10;
+  let m = s.match(/^十(.)$/);
+  if (m && map[m[1]] != null) return 10 + map[m[1]];
+  m = s.match(/^(.)十(.)?$/);
+  if (m && map[m[1]] != null) return map[m[1]] * 10 + (m[2] && map[m[2]] != null ? map[m[2]] : 0);
+  if (map[s] != null) return map[s];
+  return null;
+}
+
+/** 把「1.5亿」「3000万」这类换算成统一的数值（按字段单位） */
+function scaleTo(text, field) {
+  let v = parseFloat(text);
+  if (!isFinite(v)) return null;
+  const hasYi = /亿/.test(text), hasWan = /万/.test(text);
+  if (field.key === "amount") {                     // 成交额单位：亿
+    if (hasWan) v = v / 10000;
+    return v;                                        // 默认按亿
+  }
+  if (field.key === "volume") {                      // 成交量单位：手
+    if (hasYi) v = v * 100000000;
+    else if (hasWan) v = v * 10000;
+    return v;
+  }
+  return v;                                          // 其余（价/PE/PB/%/亿）直接用
+}
+
+/**
+ * 解析一段中文，抽出若干筛选条件。
+ * 返回 { rules: [...], stocks: [...], unknown: [...] }
+ */
+function parseConditions(text) {
+  const rules = [];
+  const usedSpans = [];
+  let src = String(text || "").replace(/[，,、；;]/g, " ");
+
+  // ---- 1. 找「字段 + 比较符 + 数值」组合 ----
+  for (const field of FIELDS) {
+    for (const alias of [field.label, ...field.aliases]) {
+      if (!alias) continue;
+      // 该指标名之后的 12 个字以内，找一个比较符和数字
+      const idxRe = new RegExp(alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+      let m;
+      while ((m = idxRe.exec(src)) !== null) {
+        const from = m.index;
+        if (usedSpans.some(s => from >= s[0] && from < s[1])) continue;
+        const tail = src.slice(from + alias.length, from + alias.length + 16);
+
+        let hit = null;
+        for (const { op, words } of OPS) {
+          for (const w of words) {
+            const wRe = new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+                                   "\\s*(-?\\d+(?:\\.\\d+)?)\\s*(亿|万)?");
+            const mm = tail.match(wRe);
+            if (mm) {
+              const val = scaleTo(mm[1] + (mm[2] || ""), field);
+              if (val !== null) {
+                hit = { op, val, raw: alias + w + mm[1] + (mm[2] || ""), len: m[0].length + mm[0].length };
+                break;
+              }
+            }
+          }
+          if (hit) break;
+        }
+        if (hit) {
+          rules.push({ field: field.key, fieldLabel: field.label, unit: field.unit,
+                       op: hit.op, value: hit.val, raw: hit.raw });
+          usedSpans.push([from, from + hit.len + 2]);
+          break;
+        }
+      }
+    }
+  }
+
+  // ---- 2. 涨跌方向（没有明确数字时，例如「今天涨的股票」）----
+  if (!rules.some(r => r.field === "changePct")) {
+    if (/今天涨|上涨的|红的|飘红/.test(src)) {
+      rules.push({ field: "changePct", fieldLabel: "涨跌幅", unit: "%",
+                   op: ">", value: 0, raw: "今天上涨" });
+    } else if (/今天跌|下跌的|绿的|飘绿/.test(src)) {
+      rules.push({ field: "changePct", fieldLabel: "涨跌幅", unit: "%",
+                   op: "<", value: 0, raw: "今天下跌" });
+    }
+  }
+
+  // ---- 3. 行业（近似标签）----
+  for (const ind of Object.keys(INDUSTRY)) {
+    if (ind.startsWith("_")) continue;
+    if (src.includes(ind)) {
+      rules.push({ field: "industry", fieldLabel: "行业", op: "in",
+                   value: ind, raw: "行业=" + ind, approx: true });
+      break;
+    }
+  }
+
+  // ---- 4. 具体股票名 / 代码 ----
+  const stocks = [];
+  const codeRe = /\b(\d{6})\b/g;
+  let cm;
+  while ((cm = codeRe.exec(src)) !== null) {
+    const hit = STOCKS.find(s => s[0] === cm[1]);
+    if (hit) stocks.push({ code: hit[0], name: hit[1] });
+  }
+  if (!stocks.length) {
+    for (const s of STOCKS) {
+      if (s[1].length >= 2 && src.includes(s[1]) && !stocks.some(x => x.code === s[0])) {
+        stocks.push({ code: s[0], name: s[1] });
+        if (stocks.length >= 8) break;
+      }
+    }
+  }
+
+  return { rules, stocks };
+}
+
+/* ==========================================================================
+   三、问财：扫描全市场并判断
+   ========================================================================== */
+
+const CACHE = new Map();            // code -> quote，避免重复请求
+let marketCache = null;             // 全市场快照
+let marketCacheAt = 0;
+
+function fmtMoney(yuan) {
+  if (!isFinite(yuan) || yuan <= 0) return "0";
+  if (yuan >= 1e8) return (yuan / 1e8).toFixed(2) + "亿";
+  if (yuan >= 1e4) return (yuan / 1e4).toFixed(2) + "万";
+  return yuan.toFixed(0);
+}
+
+/** 取全市场行情，带缓存（默认 60 秒内不重复扫） */
+async function getMarket(force, onProgress) {
+  const now = Date.now();
+  if (!force && marketCache && now - marketCacheAt < 60000) {
+    onProgress && onProgress(1);
+    return marketCache;
+  }
+  const codes = STOCKS.map(s => s[0]);
+
+  // 切成每批 60 只，然后用固定并发数的池子跑（实测比按大块分组快好几倍）
+  const batches = [];
+  for (let i = 0; i < codes.length; i += 60) batches.push(codes.slice(i, i + 60));
+
+  const out = {};
+  let finished = 0;
+  const total = batches.length;
+  const CONCURRENCY = 8;
+  const failed = [];              // 失败的批次，最后重试
+
+  async function oneBatch(batch) {
+    let ok = false;
+    // 重试 2 次：全市场筛选最怕因为网络抖动漏掉几只有效股票
+    for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+      try {
+        const res = await fetch(QUOTE_API + batch.map(c => guessPrefix(c) + c).join(","),
+          { cache: "no-store" });
+        const text = new TextDecoder("gbk").decode(await res.arrayBuffer());
+        let got = 0;
+        text.split(";").forEach(line => {
+          const m = line.match(/v_([a-z]{2})(\d{6})="([^"]*)"/);
+          if (!m) return;
+          const f = m[3].split("~");
+          if (f.length < 50) return;
+          const q = parseQuote(m[2], f);
+          if (q.price > 0) { out[m[2]] = q; got++; }
+        });
+        // 这一批里一只都没解析出来 → 当作失败，稍后重试
+        if (got > 0 || batch.length === 0) ok = true;
+      } catch (e) { /* 继续重试 */ }
+      if (!ok && attempt < 2) await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+    }
+    if (!ok) failed.push(batch);
+    finished++;
+    onProgress && onProgress(finished / total);
+  }
+
+  let next = 0;
+  async function worker() {
+    while (true) {
+      const i = next++;
+      if (i >= batches.length) return;
+      await oneBatch(batches[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, batches.length) }, worker));
+
+  if (failed.length) {
+    console.warn("[干死狗庄] 有 " + failed.length + " 批最终没取到：" +
+      failed.map(b => b[0][0]).join(","));
+  }
+
+  marketCache = out;
+  marketCacheAt = Date.now();
+  return out;
+}
+
+/** 单条规则是否满足，返回 { ok, why } */
+function testRule(rule, q) {
+  if (rule.field === "industry") {
+    const list = INDUSTRY[rule.value] || [];
+    const ok = list.includes(q.code);
+    return { ok, why: ok ? `${rule.value}（近似标签）` : "" };
+  }
+  const v = q[rule.field];
+  if (v == null || !isFinite(v)) {
+    return { ok: false, unknown: true, why: "该指标取不到数据" };
+  }
+  let ok;
+  switch (rule.op) {
+    case ">":  ok = v >  rule.value; break;
+    case ">=": ok = v >= rule.value; break;
+    case "<":  ok = v <  rule.value; break;
+    case "<=": ok = v <= rule.value; break;
+    case "==": ok = Math.abs(v - rule.value) < 1e-6; break;
+    default:   ok = false;
+  }
+  const unit = rule.unit || "";
+  let shown;
+  if (rule.field === "amount") shown = fmtMoney(v * 1e8);
+  else if (rule.field === "volume") shown = (v / 10000).toFixed(2) + "万手";
+  else shown = (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2)) + unit;
+
+  const opWord = { ">": ">", ">=": "≥", "<": "<", "<=": "≤", "==": "=" }[rule.op];
+  return { ok, why: `${rule.fieldLabel} ${shown}（要求 ${opWord} ${rule.value}${unit}）` };
+}
+
+/* ==========================================================================
+   四、中文解析工具（供条件筛股、股票名匹配使用）
+   ========================================================================== */
+
+const UP_WORDS = ["涨到", "升到", "涨破", "突破", "升破", "涨过", "高于", "涨上", "上到"];
+const DOWN_WORDS = ["跌到", "跌破", "跌下", "低于", "落到", "掉到", "下滑到"];
+
+/**
+ * 解析提醒语句。
+ * 返回 { ok, rule, question, options }
+ */
+function parseAlert(text) {
+  const src = String(text || "").trim();
+  if (!src) return { ok: false, question: "还没输入内容。" };
+
+  const { rules, stocks } = parseConditions(src);
+
+  // ---- 找股票 ----
+  let stock = stocks[0] || null;
+  let ambigu = null;                 // 匹到多只时留到后面一起问
+
+  const cleanBare = t => t
+    // 数字直接删掉（不留空格）：否则 "gzmt跌破1200" 会变成 "gzmt " 和 " "
+    // 两个 token，拼音被切碎就匹配不到了
+    .replace(/\d+(\.\d+)?/g, "")
+    .replace(/[%％.。，,、；;：:!！?？]/g, " ")
+    .replace(/涨到|升到|涨破|突破|升破|涨过|跌到|跌破|跌下|低于|落到|掉到|下滑到|高于/g, " ")
+    .replace(/提醒我|提醒|告诉我|通知我|通知|说一下|告我/g, " ")
+    .replace(/帮我|给我|我要|我想|请|麻烦|设置|设个|设|条件|看一下|看下/g, " ")
+    .replace(/今天|明天|盘中|收盘|元|块|钱|个点|左右|附近|以上|以下/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!stock) {
+    const bare = cleanBare(src);
+    const tokens = bare.split(" ").filter(t => t.length >= 2)
+      // 长 token 更可能是股票名（"贵州茅台" 优先于 "贵州"）
+      .sort((a, b) => b.length - a.length);
+
+    for (const token of tokens) {
+      const t = token.toLowerCase();
+      // 1) 名称完全一致
+      let cand = STOCKS.filter(s => s[1] === token);
+      // 2) 名称前缀（"茅台" → "贵州茅台" 需靠下一档，这里处理"贵州茅"这类）
+      if (!cand.length) cand = STOCKS.filter(s => s[1].startsWith(token));
+      // 3) 名称包含（"茅台" → "贵州茅台"）
+      if (!cand.length) cand = STOCKS.filter(s => s[1].includes(token));
+      // 4) 拼音首字母（"gzmt" → "贵州茅台"）
+      if (!cand.length) cand = STOCKS.filter(s => s[3] && s[3] === t);
+
+      if (cand.length === 1) { stock = { code: cand[0][0], name: cand[0][1] }; break; }
+
+      if (cand.length > 1) {
+        // 名称完全一致的优先；否则按热度挑，只把热门的前几个作为选项
+        const exact = cand.filter(s => s[1] === token);
+        const pool = exact.length ? exact : cand.slice(0, 12);
+        if (pool.length === 1) { stock = { code: pool[0][0], name: pool[0][1] }; break; }
+        // 若某个候选的拼音与 token 完全一致，直接用它（拼音一般唯一）
+        const pyHit = pool.filter(s => s[3] && s[3] === t);
+        if (pyHit.length === 1) { stock = { code: pyHit[0][0], name: pyHit[0][1] }; break; }
+        ambigu = { token, options: pool.map(s => ({ code: s[0], name: s[1] })) };
+        break;
+      }
+    }
+
+    if (ambigu) {
+      return {
+        ok: false, ask: true,
+        question: `「${ambigu.token}」匹配到多只股票，你指的是哪一只？`,
+        options: ambigu.options,
+        raw: src,
+      };
+    }
+    if (!stock) {
+      return { ok: false, ask: true,
+               question: "我没认出要盯哪只股票。请写清股票名称或 6 位代码，例如「贵州茅台跌破1250」或「600519 涨到1500」。" };
+    }
+  }
+
+  // ---- 判断是价格还是涨跌幅 ----
+  const isPct = /涨跌幅|涨幅|跌幅|涨超|跌超|上涨\d|下跌\d|个点|%|％/.test(src);
+  const dirUp = UP_WORDS.some(w => src.includes(w)) ||
+                (/涨/.test(src) && !DOWN_WORDS.some(w => src.includes(w)));
+  const dirDown = DOWN_WORDS.some(w => src.includes(w)) || /跌/.test(src);
+
+  // ---- 抓数值 ----
+  // 关键：先把股票代码和股票名从文本里挖掉再找数字。
+  // 否则「600519 涨到1400」会把代码 600519 当成触发价格（实测踩过这个坑）。
+  let numSrc = src;
+  numSrc = numSrc.split(stock.code).join(" ");
+  numSrc = numSrc.split(stock.name).join(" ");
+  // 再挖掉清单里所有 6 位代码，防止用户顺手写了别的代码
+  numSrc = numSrc.replace(/\b\d{6}\b/g, " ");
+
+  let num = null;
+  const pctMatch = numSrc.match(/(-?\d+(?:\.\d+)?)\s*[%％]/);
+  const numMatch = numSrc.match(/(\d+(?:\.\d+)?)/);
+
+  if (isPct && pctMatch) {
+    num = Math.abs(parseFloat(pctMatch[1]));
+  } else if (numMatch) {
+    num = parseFloat(numMatch[1]);
+  } else {
+    // 试中文数字：「跌破五块」「涨到一百二」
+    const cn = numSrc.match(/([一二两三四五六七八九十百]+)\s*(?:元|块|个点)?/);
+    if (cn) num = cnNum(cn[1]);
+  }
+
+  // 要显式带上单位才认（避免把「涨到」后面的噪音当数值）
+  if (num === null || !isFinite(num) || num <= 0) {
+    return { ok: false, ask: true,
+             question: `我知道要盯「${stock.name}」，但没看到触发数值。请补一个数字，例如「${stock.name}${dirDown ? "跌破" : "涨到"}多少」？` };
+  }
+
+  // ---- 组装 ----
+  const type = isPct ? "pct" : "price";
+  let direction;
+  if (dirDown && !dirUp) direction = "down";
+  else if (dirUp && !dirDown) direction = "up";
+  else {
+    return { ok: false, ask: true,
+             question: `「${stock.name} ${num}」是要涨到还是要跌到？说清方向我才好设。`,
+             options: [
+               { code: stock.code, name: `涨到 ${num}${type === "pct" ? "%" : "元"}`, dir: "up" },
+               { code: stock.code, name: `跌到 ${num}${type === "pct" ? "%" : "元"}`, dir: "down" },
+             ] };
+  }
+
+  let value = num;
+  if (type === "pct") {
+    if (direction === "down") value = -Math.abs(num);
+    else value = Math.abs(num);
+    if (value === 0) {
+      return { ok: false, ask: true, question: "涨跌幅不能是 0，请换一个数值。" };
+    }
+  } else if (value <= 0) {
+    return { ok: false, ask: true, question: "价格要大于 0，请检查数值。" };
+  }
+
+  const note = src.length <= 40 ? src : src.slice(0, 40);
+
+  // 其他没被当成方向/数值的筛选条件，提示用户（例如「市盈率低于10的茅台」）
+  const extra = rules.filter(r => r.field !== "price" && r.field !== "changePct");
+
+  return {
+    ok: true,
+    rule: { code: stock.code, name: stock.name, type, dir: direction, value, note },
+    extra: extra.length ? extra : null,
+  };
+}
+
+function showAnalysis(box, kind, html) {
+  box.className = "analysis on " + kind;
+  box.innerHTML = html;
+}
+
+function ruleSummary(r) {
+  const unit = r.type === "pct" ? "%" : "元";
+  const v = Number(r.value);
+  const shown = r.type === "pct" ? (v > 0 ? "+" : "") + v + unit : v + unit;
+  return `${r.type === "pct" ? (r.dir === "up" ? "涨幅达到" : "跌幅达到") : (r.dir === "up" ? "涨到" : "跌到")} ${shown}`;
+}
+
+/* ==========================================================================
+   五、右栏按钮：条件选股 + 按图找相似
+   --------------------------------------------------------------------------
+   这个框只干两件事，按有没有文字决定：
+   有文字 → 筛股票；拖了图 → 找相似。
+   ========================================================================== */
+
+$("askBtn").addEventListener("click", async () => {
+  const box = $("askOut");
+  const text = $("askText").value.trim();
+
+  if (!text) {
+    showAnalysis(box, "ask", `
+      <div class="hd">❓ 写点条件，或者丢张图给我</div>
+      <div>这个框能做两件事：</div>
+      <div class="parsed">
+        <div><span class="k">筛股票</span><span>市盈率低于10的银行股</span></div>
+        <div><span class="k">找相似</span><span>把 K 线截图拖进来，或 Ctrl+V 粘贴</span></div>
+      </div>
+      <div class="hint" style="margin-top:8px">
+        想设到价提醒？用左边那个「A 添加提醒」。
+      </div>
+    `);
+    return;
+  }
+
+  runScreenIntent(text, box);
+});
+
+/* ---------------- 筛股票（含按图找相似之外的条件筛选） ---------------- */
+async function runScreenIntent(text, box, bar) {
+  bar = bar || $("askBar");
+  const parsed = parseConditions(text);
+
+  // 只有股票名 → 直接查这几只
+  if (!parsed.rules.length && parsed.stocks.length) {
+    bar.className = "bar on"; bar.firstElementChild.style.width = "40%";
+    const q = await fetchMany(parsed.stocks.map(s => s.code));
+    bar.className = "bar";
+    const rows = parsed.stocks.map(s => {
+      const d = q[s.code];
+      if (!d) return { s, unknown: true };
+      return { s, d };
+    });
+    showAnalysis(box, "ok", `
+      <div class="hd">📋 查到 ${rows.length} 只</div>
+      ${rows.map(r => r.unknown
+        ? `<div class="res"><div class="tick" style="background:var(--sub)">?</div>
+             <div class="res-main"><div class="res-name">${esc(r.s.name)} <span class="ac-code">${esc(r.s.code)}</span></div>
+             <div class="res-why">取不到行情（可能停牌）</div></div></div>`
+        : `<div class="res"><div class="tick">√</div>
+             <div class="res-main"><div class="res-name">${esc(r.d.name)} <span class="ac-code">${esc(r.s.code)}</span></div>
+             <div class="res-why">市盈率 ${r.d.pe || "—"}｜市净率 ${r.d.pb || "—"}｜总市值 ${r.d.totalCap} 亿｜换手 ${r.d.turnover}%</div></div>
+             <div class="res-right"><div class="px ${r.d.change > 0 ? "up" : (r.d.change < 0 ? "down" : "flat")}">${r.d.price.toFixed(2)}</div>
+             <div class="chg ${r.d.change > 0 ? "up" : (r.d.change < 0 ? "down" : "flat")}">${r.d.changePct > 0 ? "▲" : (r.d.changePct < 0 ? "▼" : "─")}${r.d.changePct.toFixed(2)}%</div></div></div>`).join("")}
+    `);
+    return;
+  }
+
+  // 条件解析不出来 → 反问
+  if (!parsed.rules.length) {
+    showAnalysis(box, "ask", `
+      <div class="hd">❓ 没看懂这个条件</div>
+      <div>我没能从中提取出可筛选的指标。请试试这样写：</div>
+      <div class="parsed">
+        <div><span class="k">例子</span><span>市盈率低于10的银行股</span></div>
+        <div><span class="k"></span><span>今天涨幅超过5%的半导体</span></div>
+        <div><span class="k"></span><span>市值大于1000亿 换手率低于1%</span></div>
+        <div><span class="k"></span><span>破净的股票</span></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--sub)">
+        能筛的指标见下面「可用条件」。
+      </div>
+    `);
+    return;
+  }
+
+  // 全市场扫描
+  bar.className = "bar on";
+  box.className = "analysis";
+  try {
+    const market = await getMarket(true, p => {
+      bar.firstElementChild.style.width = Math.round(p * 100) + "%";
+    });
+    bar.className = "bar";
+
+    const all = Object.values(market);
+    const hits = [];
+    const unknowns = [];
+    for (const q of all) {
+      const reasons = [];
+      let ok = true, unk = false;
+      for (const r of parsed.rules) {
+        const t = testRule(r, q);
+        if (t.unknown) { unk = true; break; }
+        if (t.ok) reasons.push(t.why);
+        else { ok = false; break; }
+      }
+      if (unk) unknowns.push(q);
+      else if (ok) hits.push({ q, reasons });
+    }
+
+    hits.sort((a, b) => b.q.totalCap - a.q.totalCap);
+
+    const cap = 60;
+    const shown = hits.slice(0, cap);
+    const rulesText = parsed.rules.map(r =>
+      r.field === "industry"
+        ? `${r.value}（近似标签）`
+        : `${r.fieldLabel} ${({ ">": ">", ">=": "≥", "<": "<", "<=": "≤", "==": "=" })[r.op]} ${r.value}${r.unit || ""}`
+    ).join("　且　");
+
+    showAnalysis(box, hits.length ? "ok" : "ask", `
+      <div class="hd">${hits.length ? "✅" : "🔍"} 全市场 ${all.length} 只中，符合的有 <b>${hits.length}</b> 只</div>
+      <div class="parsed"><div><span class="k">条件</span><span>${esc(rulesText)}</span></div>
+      ${parsed.stocks.length ? `<div><span class="k">限定</span><span>${esc(parsed.stocks.map(s => s.name).join("、"))}</span></div>` : ""}
+      <div><span class="k">行情时间</span><span>${esc(shown[0] ? shown[0].q.time : "—")}</span></div></div>
+
+      ${shown.map(x => `
+        <div class="res">
+          <div class="tick">√</div>
+          <div class="res-main">
+            <div class="res-name">${esc(x.q.name)} <span class="ac-code">${esc(x.q.code)}</span></div>
+            <div class="res-why">${esc(x.reasons.join(" ｜ "))}</div>
+          </div>
+          <div class="res-right">
+            <div class="px ${x.q.change > 0 ? "up" : (x.q.change < 0 ? "down" : "flat")}">${x.q.price.toFixed(2)}</div>
+            <div class="chg ${x.q.change > 0 ? "up" : (x.q.change < 0 ? "down" : "flat")}">${x.q.changePct > 0 ? "▲" : (x.q.changePct < 0 ? "▼" : "─")}${x.q.changePct.toFixed(2)}%</div>
+          </div>
+        </div>`).join("")}
+
+      ${hits.length > cap ? `<div class="hint" style="margin-top:10px">只显示市值最大的 ${cap} 只，共 ${hits.length} 只符合。</div>` : ""}
+      ${!hits.length ? `<div class="hint" style="margin-top:10px">放宽一点条件试试，或者检查指标写法。</div>` : ""}
+      ${unknowns.length ? `<div class="hint" style="margin-top:8px">另有 ${unknowns.length} 只因为取不到指标数据（次新股/停牌）没能判断。</div>` : ""}
+    `);
+  } catch (e) {
+    bar.className = "bar";
+    showAnalysis(box, "err", `<div class="hd">❌ 扫描失败</div><div>${esc(e.message)}</div>`);
+  }
+}
+
+/* ---------------- 清空（防误触） ----------------
+   两道防护：
+   1) 没东西可清时按钮直接不显示 —— 误触的机会都没有
+   2) 有东西可清时，点了先问一句再清
+   ------------------------------------------------------------------ */
+
+/** 输入框有字、或者结果框里有东西 → 才需要显示「清空」 */
+function updateClearBtn() {
+  const btn = $("clearBtn");
+  if (!btn) return;
+  const hasText = $("askText").value.trim().length > 0;
+  const hasResult = $("askOut").className.includes("on");
+  btn.style.display = (hasText || hasResult) ? "" : "none";
+}
+
+$("clearBtn").addEventListener("click", () => {
+  const hasText = $("askText").value.trim().length > 0;
+  if (hasText && !confirm("清空输入框里的内容？")) return;
+  $("askText").value = "";
+  $("askOut").className = "analysis";
+  $("askOut").innerHTML = "";
+  updateClearBtn();
+});
+
+// 输入时实时决定按钮显示与否
+$("askText").addEventListener("input", updateClearBtn);
+// 结果框内容变化也要跟着更新（用 MutationObserver 盯 class 变化）
+new MutationObserver(updateClearBtn).observe($("askOut"),
+  { attributes: true, attributeFilter: ["class"] });
+updateClearBtn();
+
+/* 可筛选指标展示 */
+(function renderFieldChips() {
+  const box = $("fieldChips");
+  box.innerHTML = FIELDS.map(f => `<span class="chip"><b>${f.label}</b>${f.unit}</span>`).join("")
+    + Object.keys(INDUSTRY).filter(k => !k.startsWith("_"))
+        .map(k => `<span class="chip">${k}</span>`).join("");
+})();
+
+/* ==========================================================================
+   五之二、按图找相似股票
+   --------------------------------------------------------------------------
+   流程：
+     1. 从截图里还原 K 线走势（vision.js）
+     2. 拉全市场历史 K 线（东财接口，带 CORS）
+     3. 用滑动窗口逐只比对，算两种相似度：
+        · 形态相似度 —— 只比形状，与股价高低无关
+        · 幅度相似度 —— 区间涨跌幅是否接近
+     4. 自检：把 Top 结果重新取数复算一遍，确认不是偶然算错
+   ========================================================================== */
+
+const KLT = { day: 101, week: 102, month: 103 };
+const KLT_LABEL = { day: "日线", week: "周线", month: "月线" };
+// 历史 K 线：腾讯有多个等价端点，单个子域容易被限流（实测 web.ifzq 会返回 501），
+// 所以做端点轮换；东财作为最后兜底。
+const TX_KLINE_HOSTS = [
+  "https://ifzq.gtimg.cn",
+  "https://proxy.finance.qq.com/ifzqgtimg",
+  "https://web.ifzq.gtimg.cn",
+];
+const EM_KLINE = "https://push2his.eastmoney.com/api/qt/stock/kline/get";
+let txHostIndex = 0;        // 记住上次成功的端点，减少无效尝试
+
+function secidOf(code, prefix) {
+  // 东财：1=沪市，0=深市/北交所
+  return (prefix === "sh" ? "1." : "0.") + code;
+}
+
+/** 解析腾讯返回，返回 [{date,o,c,h,l,v}] */
+function parseTencent(d, kind) {
+  const data = (d && d.data) || {};
+  for (const sym of Object.keys(data)) {
+    const obj = data[sym];
+    if (!obj || typeof obj !== "object") continue;
+    for (const key of ["qfq" + kind, kind]) {
+      const arr = obj[key];
+      if (Array.isArray(arr) && arr.length) {
+        return arr.map(r => ({
+          date: r[0],
+          o: +r[1], c: +r[2], h: +r[3], l: +r[4], v: +(r[5] || 0),
+        })).filter(b => isFinite(b.c) && b.c > 0);
+      }
+    }
+  }
+  return [];
+}
+
+/** 解析东财返回 */
+function parseEastmoney(d) {
+  const kl = (d && d.data && d.data.klines) || [];
+  return kl.map(line => {
+    const p = line.split(",");
+    return { date: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4], v: +(p[5] || 0) };
+  }).filter(b => isFinite(b.c) && b.c > 0);
+}
+
+/**
+ * 取历史 K 线。腾讯多端点轮换，失败再试东财。
+ * kind: day / week / month
+ */
+async function fetchKline(code, prefix, kind, lmt) {
+  const sym = prefix + code;
+  const n = Math.min(lmt, 300);          // 实测超过 300 会被拒
+
+  // ---- 源 1：腾讯（端点轮换，从上次成功的那个开始试）----
+  // 每个端点试 2 轮、轮间加退避延时：服务端限流是暂时的，
+  // 短暂等待后重试能救回大部分请求，避免某只股票被静默跳过。
+  const order = TX_KLINE_HOSTS.map((_, i) => TX_KLINE_HOSTS[(txHostIndex + i) % TX_KLINE_HOSTS.length]);
+  for (let round = 0; round < 2; round++) {
+    for (let i = 0; i < order.length; i++) {
+      const url = `${order[i]}/appstock/app/fqkline/get?param=${sym},${kind},,,${n},qfq`;
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (res.ok) {
+          const d = await res.json();
+          const bars = parseTencent(d, kind);
+          if (bars.length >= 5) {
+            txHostIndex = (txHostIndex + i) % TX_KLINE_HOSTS.length;
+            return bars;
+          }
+        }
+      } catch (e) { /* 换下一个端点 */ }
+    }
+    if (round === 0) await new Promise(r => setTimeout(r, 900 + Math.random() * 700));
+  }
+
+  // ---- 源 2：东财 ----
+  const klt = KLT[kind] || 101;
+  const emUrl = `${EM_KLINE}?secid=${secidOf(code, prefix)}` +
+    `&fields1=f1,f2&fields2=f51,f52,f53,f54,f55,f56&klt=${klt}&fqt=1` +
+    `&end=20500101&lmt=${Math.min(lmt, 500)}`;
+  try {
+    const res = await fetch(emUrl, { cache: "no-store" });
+    const d = await res.json();
+    const bars = parseEastmoney(d);
+    if (bars.length >= 5) return bars;
+  } catch (e) { /* 两个源都没成 */ }
+
+  return [];
+}
+
+/* ---------------- 数学工具 ---------------- */
+
+/** z-score 标准化：消掉股价高低和绝对波动的影响，只留形状 */
+function standardize(arr) {
+  const n = arr.length;
+  if (!n) return [];
+  const mean = arr.reduce((a, b) => a + b, 0) / n;
+  const std = Math.sqrt(arr.reduce((a, b) => a + (b - mean) ** 2, 0) / n) || 1;
+  return arr.map(v => (v - mean) / std);
+}
+
+/** 皮尔逊相关系数（两边都标准化后就是余弦相似度） */
+function pearson(a, b) {
+  const n = Math.min(a.length, b.length);
+  if (n < 3) return 0;
+  const ma = a.slice(0, n).reduce((x, y) => x + y, 0) / n;
+  const mb = b.slice(0, n).reduce((x, y) => x + y, 0) / n;
+  let num = 0, da = 0, db = 0;
+  for (let i = 0; i < n; i++) {
+    const x = a[i] - ma, y = b[i] - mb;
+    num += x * y; da += x * x; db += y * y;
+  }
+  return (da && db) ? num / Math.sqrt(da * db) : 0;
+}
+
+/** 标准差（衡量形状的"起伏程度"） */
+function stdev(arr) {
+  const n = arr.length;
+  if (n < 2) return 0;
+  const m = arr.reduce((a, b) => a + b, 0) / n;
+  return Math.sqrt(arr.reduce((a, b) => a + (b - m) ** 2, 0) / n);
+}
+
+/**
+ * 在一条历史序列里找与目标形态最像的窗口。
+ * target 已标准化；history 是原始价格序列。
+ *
+ * 注意：这里**不做**标准差比例的预筛选。
+ * 之前为了省算力加过一道 "窗口标准差 / 目标标准差" 的闸门，
+ * 结果把正常窗口也全滤掉了（实测平安银行、宁德时代一个候选都没剩下，
+ * 导致"自己都找不回自己"）。皮尔逊相关系数本身就会归一化尺度，
+ * 不需要预筛选；算力上全市场也只是秒级，不值得冒这个风险。
+ */
+function bestWindow(target, prices, step = 2) {
+  const L = target.length;
+  if (prices.length < L) return null;
+  let best = null;
+
+  for (let start = 0; start + L <= prices.length; start += step) {
+    const win = prices.slice(start, start + L);
+    const z = standardize(win);
+    const corr = pearson(target, z);
+    if (!best || corr > best.corr) {
+      const chg = (win[win.length - 1] - win[0]) / win[0] * 100;
+      best = { corr, start, end: start + L - 1, window: win, change: chg };
+    }
+  }
+  return best;
+}
+
+/** 目标形态自身的区间涨跌幅（用于幅度比对） */
+function seriesChange(series) {
+  if (series.length < 2) return 0;
+  const first = series[0], last = series[series.length - 1];
+  return first ? (last - first) / Math.abs(first) * 100 : 0;
+}
+
+/* ---------------- 进度条 ---------------- */
+
+function setBar(barEl, ratio) {
+  barEl.classList.add("on");
+  barEl.firstElementChild.style.width = Math.round(Math.max(0, Math.min(1, ratio)) * 100) + "%";
+}
+function hideBar(barEl) { barEl.classList.remove("on"); }
+
+/* ---------------- 并发池 ---------------- */
+
+async function poolRun(items, worker, limit, onTick) {
+  let next = 0, done = 0;
+  async function run() {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      try { await worker(items[i], i); } catch (e) { /* 单只失败不影响整体 */ }
+      done++;
+      onTick && onTick(done / items.length);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+}
+
+/* ---------------- 主流程 ---------------- */
+
+let lastVision = null;      // 上次识别的结果，供"换周期重找"复用
+
+async function analyzeImage(file) {
+  const box = $("askOut");
+  const bar = $("askBar");
+  const kltKey = $("klt").value;
+  const kind = KLT[kltKey] ? kltKey : "day";
+
+  // ---- 1. 识别图片 ----
+  showAnalysis(box, "ask", `<div class="hd">🔍 正在识别图片…</div>
+    <div class="hint">从截图里还原 K 线，这一步在你的浏览器里完成，图片不会上传。</div>`);
+
+  let bytes;
+  try {
+    bytes = new Uint8Array(await file.arrayBuffer());
+  } catch (e) {
+    showAnalysis(box, "err", `<div class="hd">❌ 读不到图片</div><div>${esc(e.message)}</div>`);
+    return;
+  }
+
+  let vision;
+  try {
+    vision = await ChartVision.extract(bytes);
+  } catch (e) {
+    showAnalysis(box, "err", `<div class="hd">❌ 图片解析失败</div>
+      <div>${esc(e.message)}</div>
+      <div class="hint" style="margin-top:8px">请用截图工具重新截一张 PNG 格式的 K 线图，
+      只截 K 线区域效果最好。</div>`);
+    return;
+  }
+
+  if (!vision.candles.length || vision.candles.length < 8) {
+    showAnalysis(box, "ask", `<div class="hd">❓ 没能从图里认出 K 线</div>
+      ${vision.warnings.map(w => `<div>· ${esc(w)}</div>`).join("")}
+      <div class="hint" style="margin-top:8px">
+        建议：<br>
+        1. 只截 K 线主图（别把成交量、指标一起截进来）<br>
+        2. 用 PNG 格式，别用打了码或压得很糊的图<br>
+        3. 至少要有 10 根以上 K 线
+      </div>`);
+    return;
+  }
+
+  const target = ChartVision.closeSeries(vision.candles);
+  const targetZ = standardize(target);
+  const targetChg = seriesChange(target);
+  const L = target.length;
+
+  lastVision = { target, targetZ, targetChg, L, kltKey, kind };
+
+  // ---- 2. 拉全市场历史数据 ----
+  showAnalysis(box, "ask", `
+    <div class="hd">✅ 已认出 ${L} 根 K 线（${KLT_LABEL[kltKey]}）</div>
+    <div class="hint">正在拉全市场历史数据并逐只比对，约十几秒…</div>`);
+
+  const need = L * 3 + 20;                    // 留足滑动空间
+  const lmt = Math.min(1000, Math.max(need, 250));
+  const scope = ($("scanScope") && $("scanScope").value) || "all";
+  // 热门模式只扫成交额靠前的部分（STOCKS 本身就是按成交额降序排列的）
+  const scopeMap = { top300: 300, top800: 800 };
+  const universe = scopeMap[scope] ? STOCKS.slice(0, scopeMap[scope]) : STOCKS;
+  const results = [];
+  let fetched = 0, noData = 0;
+
+  await poolRun(universe, async (row) => {
+    const [code, name, prefix] = row;
+    const bars = await fetchKline(code, prefix, kind, lmt);
+    if (bars.length < L + 2) { noData++; return; }
+    const prices = bars.map(b => b.c);
+    const w = bestWindow(targetZ, prices, kind === "day" ? 2 : 1);
+    if (!w) { noData++; return; }
+    results.push({
+      code, name, prefix, bars,
+      corr: w.corr,
+      start: w.start, end: w.end,
+      change: w.change,
+      price: prices[prices.length - 1],
+      lastDate: bars[bars.length - 1].date,
+      firstDate: bars[w.start].date,
+      lastDateWin: bars[w.end].date,
+    });
+    fetched++;
+  }, 16, p => setBar(bar, p));
+
+  hideBar(bar);
+
+  if (!results.length) {
+    showAnalysis(box, "ask", `<div class="hd">❓ 没找到可比对的数据</div>
+      <div>可能是图片周期选错了，或者网络取不到历史数据。</div>`);
+    return;
+  }
+
+  // ---- 3. 排序：形态 / 幅度 ----
+  results.sort((a, b) => b.corr - a.corr);
+  const byShape = results.slice(0, 12);
+
+  // 幅度相似：涨跌幅接近，且形态也别太离谱
+  const byAmp = results
+    .filter(r => r.corr > 0.5)
+    .slice()
+    .sort((a, b) =>
+      Math.abs(a.change - targetChg) - Math.abs(b.change - targetChg))
+    .slice(0, 12);
+
+  // ---- 4. 自检：复算 Top 结果，确认不是算错 ----
+  const checkList = byShape.slice(0, 5);
+  const selfCheck = [];
+  for (const r of checkList) {
+    const bars2 = await fetchKline(r.code, r.prefix, kind, lmt);
+    const prices2 = bars2.map(b => b.c);
+    const w2 = bestWindow(targetZ, prices2, 1);   // 换 step=1 更细地重算
+    const consistent = w2 && Math.abs(w2.corr - r.corr) < 0.06;
+    selfCheck.push({
+      code: r.code, name: r.name,
+      ok: !!consistent,
+      corr2: w2 ? w2.corr : 0,
+      sameRange: w2 ? (Math.abs(w2.start - r.start) <= 3) : false,
+    });
+  }
+  const allOk = selfCheck.every(s => s.ok);
+  const strongEnough = byShape[0].corr >= 0.75;
+
+  // ---- 5. 输出 ----
+  const pct = v => (v * 100).toFixed(1) + "%";
+  const rowHtml = (r, extra) => `
+    <div class="res">
+      <div class="tick">√</div>
+      <div class="res-main">
+        <div class="res-name">${esc(r.name)} <span class="ac-code">${esc(r.code)}</span></div>
+        <div class="res-why">
+          形态相似度 <b>${pct(r.corr)}</b>　区间涨跌 <b>${r.change > 0 ? "+" : ""}${r.change.toFixed(1)}%</b><br>
+          对应区间 ${esc(r.firstDate)} ~ ${esc(r.lastDateWin)}
+          ${extra || ""}
+        </div>
+      </div>
+      <div class="res-right">
+        <div class="px">${r.price.toFixed(2)}</div>
+        <div class="chg flat">${esc(r.lastDate)}</div>
+      </div>
+    </div>`;
+
+  const checkHtml = `
+    <div class="parsed" style="border-left:3px solid ${allOk ? "#30a350" : "#ffaa00"}">
+      <div><span class="k">自检</span><span>
+        ${allOk ? "✅ 已复算前 5 只，结果一致（换用更细的步长重算，形态相似度误差 < 6%）"
+                : "⚠️ 部分结果复算有偏差，已标注"}
+      </span></div>
+      <div><span class="k">样本</span><span>成功比对 ${results.length} 只，无数据 ${noData} 只</span></div>
+      <div><span class="k">形态</span><span>你上传的图共 ${L} 根，区间涨跌 ${targetChg > 0 ? "+" : ""}${targetChg.toFixed(1)}%</span></div>
+    </div>`;
+
+  const shapeRows = byShape.map(r => {
+    const sc = selfCheck.find(s => s.code === r.code);
+    const badge = sc ? (sc.ok ? "　<span style='color:var(--ok)'>已复算✓</span>"
+                              : "　<span style='color:#ffaa00'>复算有偏差</span>") : "";
+    return rowHtml(r, badge);
+  }).join("");
+
+  const ampRows = byAmp.map(r => rowHtml(r,
+    `　幅度差 ${Math.abs(r.change - targetChg).toFixed(1)} 个百分点`)).join("");
+
+  showAnalysis(box, strongEnough ? "ok" : "ask", `
+    <div class="hd">${strongEnough ? "✅" : "🔍"} 找到 ${results.length} 只候选，最像的是 <b>${esc(byShape[0].name)}</b>（${pct(byShape[0].corr)}）</div>
+    ${checkHtml}
+    ${strongEnough ? "" : `<div class="hint">⚠️ 最高的形态相似度只有 ${pct(byShape[0].corr)}，
+      说明市场里没有和你这张图很像的走势。下面的结果仅供参考，别当结论用。</div>`}
+
+    <div style="font-weight:700;margin:14px 0 2px">一、形态最像（只看形状，不管股价高低）</div>
+    ${shapeRows}
+
+    <div style="font-weight:700;margin:18px 0 2px">二、形态像 + 涨跌幅也接近</div>
+    <div class="hint" style="margin-bottom:4px">
+      你的图区间涨跌 ${targetChg > 0 ? "+" : ""}${targetChg.toFixed(1)}%，下面是幅度最接近的
+    </div>
+    ${ampRows || '<div class="empty">没有幅度接近的</div>'}
+
+    <div class="hint" style="margin-top:14px">
+      形态相似度是皮尔逊相关系数：100% = 走势形状完全一致，80% 以上算很像，
+      70% 以下基本只是"都有涨跌"而已。这个数字只反映形状，不代表未来会涨会跌。
+    </div>
+  `);
+}
+
+/* ---------------- 上传区交互 ---------------- */
+
+(function initVisionUI() {
+  const drop = $("dropZone");
+  const input = $("imgInput");
+  if (!drop || !input) return;
+
+  drop.addEventListener("click", () => input.click());
+  input.addEventListener("change", () => {
+    const f = input.files && input.files[0];
+    if (f) onPick(f);
+  });
+
+  ["dragenter", "dragover"].forEach(ev =>
+    drop.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation();
+      drop.classList.add("hover");
+    }));
+  ["dragleave", "drop"].forEach(ev =>
+    drop.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation();
+      drop.classList.remove("hover");
+    }));
+  drop.addEventListener("drop", e => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) onPick(f);
+  });
+
+  // 直接 Ctrl+V 粘贴截图，这是最快的用法
+  document.addEventListener("paste", e => {
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    for (const it of items) {
+      if (it.type && it.type.indexOf("image") === 0) {
+        const f = it.getAsFile();
+        if (f) {
+          e.preventDefault();
+          onPick(f);
+          $("askText").scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return;
+      }
+    }
+  });
+
+  function onPick(file) {
+    const nameEl = $("fileName");
+    if (nameEl) nameEl.textContent = "已选择：" + (file.name || "剪贴板图片");
+    // 走图片流程时，才显示"周期 / 扫描范围"这两个参数
+    $("imgOpts").style.display = "flex";
+    $("askText").value = "";
+    $("askBtn").scrollIntoView({ behavior: "smooth", block: "center" });
+    analyzeImage(file);
+  }
+})();
+
+/* ==========================================================================
+   五之二、语音输入（按住说话）
+   --------------------------------------------------------------------------
+   用浏览器内置的 Web Speech API，不需要任何额外的语音服务或密钥。
+
+   有个硬性前提：**必须是安全上下文**才能调麦克风。也就是
+   localhost / 127.0.0.1 / https，三种之一。
+   用局域网 IP + http 访问（比如手机上 http://192.168.1.5:8848）
+   浏览器会直接拒绝，这时要把原因说清楚，而不是让按钮点了没反应。
+   ========================================================================== */
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function micSecureOK() {
+  // file:// 和 http://局域网IP 都不算安全上下文
+  return window.isSecureContext === true;
+}
+
+(function initVoice() {
+  const btn = $("micBtn");
+  const label = $("micLabel");
+  const ta = $("askText");
+  if (!btn || !ta) return;
+
+  // 不支持 / 不安全 → 按钮禁用并说明原因，不让用户白按
+  if (!SR || !micSecureOK()) {
+    btn.classList.add("unsupported");
+    btn.disabled = true;
+    if (!SR) {
+      label.textContent = "这个浏览器不支持语音输入";
+    } else {
+      label.textContent = "语音需要 localhost 或 https 才能用";
+      btn.title = "浏览器只在安全上下文（localhost / https）下允许用麦克风。" +
+                  "在电脑上用 http://127.0.0.1:8848 打开就能用；" +
+                  "手机用局域网 IP 的 http 地址打开会被浏览器拒绝。";
+    }
+    return;
+  }
+
+  let rec = null;
+  let listening = false;
+  let baseText = "";        // 开始说话前输入框里已有的内容
+  let finalText = "";       // 本次已确认的文字
+
+  function start() {
+    if (listening) return;
+    rec = new SR();
+    rec.lang = "zh-CN";
+    rec.continuous = true;
+    rec.interimResults = true;      // 边说边出字，用户能看到识别效果
+    rec.maxAlternatives = 1;
+
+    baseText = ta.value;
+    finalText = "";
+    listening = true;
+    btn.classList.add("listening");
+    label.textContent = "松手结束";
+
+    rec.onresult = e => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      // 已确认的 + 临时识别片段一起显示，用户能实时看到识别效果
+      ta.value = baseText + finalText + interim;
+    };
+
+    rec.onerror = e => {
+      const map = {
+        "not-allowed": "麦克风权限被拒绝了。点地址栏左边的图标允许麦克风，或用 127.0.0.1 打开。",
+        "service-not-allowed": "浏览器禁止了语音识别服务。",
+        "audio-capture": "没检测到麦克风设备。",
+        "no-speech": "没听到声音，再试一次。",
+        "network": "语音识别需要联网，检查一下网络。",
+        "aborted": "",
+      };
+      const msg = map[e.error];
+      if (msg) toast(msg, "err");
+      else if (e.error) toast("语音识别出错：" + e.error, "err");
+      stop(true);
+    };
+
+    rec.onend = () => {
+      // continuous 模式下浏览器仍可能自动断开，这里不自动重启，
+      // 保持"松手即停"的可预期行为
+      if (listening) stop(false);
+    };
+
+    try {
+      rec.start();
+    } catch (e) {
+      listening = false;
+      btn.classList.remove("listening");
+      label.textContent = "按住说话";
+      toast("启动语音失败：" + e.message, "err");
+    }
+  }
+
+  function stop(fromError) {
+    if (!listening) return;
+    listening = false;
+    btn.classList.remove("listening");
+    label.textContent = "按住说话";
+    try { rec && rec.stop(); } catch (e) { /* 忽略 */ }
+    rec = null;
+    if (!fromError) {
+      const added = ta.value.length - baseText.length;
+      if (added > 0) toast("已识别 " + added + " 个字", "ok");
+      else toast("没听清，再说一次试试", "err");
+    }
+  }
+
+  // 按住说话、松手结束。
+  // 同时绑鼠标和触摸事件：手机上必须先 preventDefault，
+  // 否则长按会弹出系统的文本选择菜单，把输入框搞乱。
+  const down = e => {
+    if (e && e.cancelable) e.preventDefault();
+    start();
+  };
+  const up = e => {
+    if (e && e.cancelable) e.preventDefault();
+    stop(false);
+  };
+
+  btn.addEventListener("mousedown", down);
+  btn.addEventListener("mouseup", up);
+  btn.addEventListener("mouseleave", e => { if (listening) stop(false); });
+  btn.addEventListener("touchstart", down, { passive: false });
+  btn.addEventListener("touchend", up, { passive: false });
+  btn.addEventListener("touchcancel", up, { passive: false });
+  // 键盘可达性：空格/回车也能用（按一下开始，再按一下结束）
+  btn.addEventListener("keydown", e => {
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      listening ? stop(false) : start();
+    }
+  });
+  // 阻止长按弹出上下文菜单
+  btn.addEventListener("contextmenu", e => e.preventDefault());
+})();
+
+/* ==========================================================================
+   六、下拉提示
+   ========================================================================== */
+
+let acIndex = -1, acHits = [];
+let acSelecting = false;
+
+function searchStocks(q) {
+  let s = q.trim().toLowerCase();
+  if (!s) return [];
+  const pfx = s.match(/^(sh|sz|bj)(\d{3,6})$/);
+  if (pfx) s = pfx[2];
+  const digits = /^\d+$/.test(s);
+  const hits = [];
+  for (let i = 0; i < STOCKS.length; i++) {
+    const row = STOCKS[i];
+    const code = row[0], name = row[1], py = row[3], hot = row[4] || 0;
+    let score = -1;
+    if (digits) {
+      if (code === s) score = 100;
+      else if (code.startsWith(s)) score = 70;
+      else if (code.includes(s)) score = 30;
+    } else {
+      if (name === q.trim()) score = 100;
+      else if (py && py.startsWith(s)) score = 88;
+      else if (name.startsWith(q.trim())) score = 85;
+      else if (name.includes(q.trim())) score = 55;
+      else if (py && py.includes(s)) score = 25;
+    }
+    if (score > 0) {
+      hits.push({ code, name, prefix: row[2], score: score + hot });
+      if (hits.length > 400) break;
+    }
+  }
+  hits.sort((a, b) => b.score - a.score || a.code.localeCompare(b.code));
+  return hits.slice(0, 12);
+}
+
+function renderAc(list) {
+  const box = $("acList");
+  acHits = list; acIndex = -1;
+  if (!list.length) { box.className = "ac-list"; box.innerHTML = ""; return; }
+  box.innerHTML = list.map((s, i) =>
+    `<div class="ac-item" data-i="${i}">
+       <span class="ac-name">${esc(s.name)}</span>
+       <span class="ac-code">${esc(s.code)} · ${esc(s.prefix.toUpperCase())}</span>
+     </div>`).join("");
+  box.className = "ac-list on";
+  box.querySelectorAll(".ac-item").forEach(el => {
+    const pick = e => {
+      if (e && e.cancelable) e.preventDefault();
+      if (e && e.stopPropagation) e.stopPropagation();
+      chooseAc(+el.dataset.i);
+    };
+    el.addEventListener("pointerdown", pick);
+    el.addEventListener("mousedown", pick);
+    el.addEventListener("touchstart", pick, { passive: false });
+  });
+}
+
+function closeAc() { $("acList").className = "ac-list"; acIndex = -1; }
+
+function chooseAc(i) {
+  const s = acHits[i];
+  if (!s) return;
+  acSelecting = true;
+  picked = { code: s.code, name: s.name, prefix: s.prefix };
+  $("code").value = s.code;
+  closeAc();
+  showPicked();
+  try { $("value").focus(); } catch (e) {}
+  setTimeout(() => { acSelecting = false; }, 300);
+}
+
+function showPicked() {
+  const box = $("picked");
+  if (!picked) { box.className = "picked"; box.innerHTML = ""; return; }
+  box.className = "picked on";
+  box.innerHTML = `<span class="dot"></span><b>${esc(picked.name)}</b>
+    <span class="ac-code">${esc(picked.code)}</span>
+    <button class="x" id="clearPick" title="清除">×</button>`;
+  $("clearPick").addEventListener("click", () => {
+    picked = null; $("code").value = ""; showPicked(); closeAc(); $("code").focus();
+  });
+}
+
+/* ==========================================================================
+   七、记录：存储、校验、渲染
+   ========================================================================== */
+
+function readStore() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
+function writeStore(list) { localStorage.setItem(LS_KEY, JSON.stringify(list)); }
+
+/** 写完读回，逐字段核对（需求里的"后台测试是否真保存完成"） */
+function verifySaved(id) {
+  let arr;
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return { ok: false, why: "存储里没有数据" };
+    arr = JSON.parse(raw);
+  } catch (e) { return { ok: false, why: "存储内容无法解析" }; }
+  if (!Array.isArray(arr)) return { ok: false, why: "存储格式不对" };
+  const hit = arr.find(r => r.id === id);
+  if (!hit) return { ok: false, why: "写进去又没读回来" };
+  for (const k of ["code", "name", "type", "dir", "value"]) {
+    if (hit[k] === undefined || hit[k] === null || hit[k] === "") {
+      return { ok: false, why: "字段 " + k + " 丢失" };
+    }
+  }
+  return { ok: true, record: hit, total: arr.length };
+}
+
+function storageHealth() {
+  try {
+    const probe = "__p__" + Date.now();
+    localStorage.setItem(probe, "1");
+    const ok = localStorage.getItem(probe) === "1";
+    localStorage.removeItem(probe);
+    return ok;
+  } catch (e) { return false; }
+}
+
+function condText(r) {
+  return ruleSummary({ type: r.type, dir: r.dir, value: Number(r.value) });
+}
+
+/** 保存入口：写完读回校验，通过后自动交给后台盯盘 */
+async function saveRecord(rec) {
+  // 去重
+  const dup = records.find(r => r.code === rec.code && r.type === rec.type &&
+    r.dir === rec.dir && Math.abs(Number(r.value) - Number(rec.value)) < 1e-9);
+  if (dup) {
+    toast(`这条已经有了：\n${dup.name}　${condText(dup)}`, "err");
+    return false;
+  }
+  const full = {
+    id: "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    code: rec.code, name: rec.name, prefix: guessPrefix(rec.code),
+    type: rec.type, dir: rec.dir, value: Number(rec.value),
+    note: rec.note || "", createdAt: Date.now(),
+  };
+  try {
+    writeStore(records.concat([full]));
+    const check = verifySaved(full.id);
+    if (!check.ok) throw new Error(check.why);
+    records = readStore();
+    render();
+    toast(`${check.record.name}　${condText(check.record)}\n设置提醒完成 ✓\n（已保存 ${check.total} 条，校验通过）`, "ok");
+    updateSaveState();
+    // 保存即交给后台盯盘：同步提醒并确保监控在跑（用户不用管这件事）
+    syncAlertsToMonitor(true);
+    return true;
+  } catch (e) {
+    records = readStore();
+    render();
+    toast("保存失败：" + (e && e.message ? e.message : e) +
+          "\n可能原因：浏览器存储被禁用或已满", "err");
+    return false;
+  }
+}
+
+/* ---------------- 手动保存 ---------------- */
+$("saveBtn").addEventListener("click", async () => {
+  const btn = $("saveBtn");
+  if (!picked) {
+    const typed = $("code").value.trim();
+    if (/^\d{6}$/.test(typed)) {
+      toast("请先在下拉提示里选中这只股票\n（确认名称没选错）", "err");
+      $("code").focus();
+      return;
+    }
+    toast("请输入股票代码，并在下拉提示里选一只", "err");
+    $("code").focus();
+    return;
+  }
+  const type = $("type").value;
+  const dir = $("dir").value;
+  let value = parseFloat(String($("value").value).replace(/[%％,，\s]/g, ""));
+  if (!isFinite(value)) {
+    toast("请填触发" + (type === "pct" ? "涨跌幅" : "价格") + "\n例如 " + (type === "pct" ? "-3" : "1300"), "err");
+    $("value").focus();
+    return;
+  }
+  if (type === "pct") {
+    if (dir === "down" && value > 0) value = -value;
+    if (dir === "up" && value < 0) value = Math.abs(value);
+  } else if (value <= 0) {
+    toast("价格要大于 0", "err");
+    $("value").focus();
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = "保存中…";
+  await new Promise(r => setTimeout(r, 100));
+  const ok = await saveRecord({
+    code: picked.code, name: picked.name, type, dir, value,
+    note: $("note").value.trim(),
+  });
+  if (ok) resetForm();
+  btn.disabled = false; btn.textContent = "保 存";
+});
+
+function resetForm() {
+  picked = null;
+  $("code").value = ""; $("value").value = ""; $("note").value = "";
+  $("dir").value = "up";
+  $("type").value = "price";
+  $("type").dispatchEvent(new Event("change"));
+  showPicked(); closeAc();
+  $("code").focus();
+}
+
+function delRecord(id) {
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  if (!confirm(`删除这条提醒？\n\n${rec.name}　${condText(rec)}`)) return;
+  writeStore(records.filter(r => r.id !== id));
+  records = readStore();
+  render(); updateSaveState();
+  syncAlertsToMonitor(true);       // 删到没提醒时，后台会自动停，别空转
+  toast("已删除", "ok");
+}
+
+function render() {
+  const box = $("list");
+  $("count").textContent = records.length ? `共 ${records.length} 条` : "";
+  if (!records.length) {
+    box.innerHTML = `<div class="empty">还没有记录<br>在上面「A 添加提醒」里选一只股票、填个条件，<br>点保存就会自动开始盯盘</div>`;
+    return;
+  }
+  box.innerHTML = records.slice().reverse().map(r => `
+    <div class="rec" data-id="${esc(r.id)}">
+      <div class="rec-main">
+        <div class="rec-name">${esc(r.name)}<span class="rec-code">${esc(r.code)}</span></div>
+        <div class="rec-cond">${esc(condText(r))}${r.note ? "　·　" + esc(r.note) : ""}</div>
+        <div class="rec-time">添加于 ${esc(fmtTime(r.createdAt))}</div>
+      </div>
+      <div class="rec-right">
+        <div class="px" data-px="${esc(r.code)}">—</div>
+        <div class="chg" data-chg="${esc(r.code)}"></div>
+      </div>
+      <button class="del" data-del="${esc(r.id)}" title="删除">×</button>
+    </div>`).join("");
+  box.querySelectorAll("[data-del]").forEach(b =>
+    b.addEventListener("click", () => delRecord(b.dataset.del)));
+  fillPrices();
+}
+
+function fmtTime(ts) {
+  const d = new Date(ts);
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+let filling = false;
+async function fillPrices() {
+  if (filling) return;
+  const codes = [...new Set(records.map(r => r.code))];
+  if (!codes.length) return;
+  filling = true;
+  try {
+    const q = await fetchMany(codes);
+    codes.forEach(code => {
+      const px = document.querySelector(`[data-px="${code}"]`);
+      const chg = document.querySelector(`[data-chg="${code}"]`);
+      if (!px) return;
+      const d = q[code];
+      if (!d) { px.textContent = "—"; if (chg) chg.textContent = "取不到行情"; return; }
+      px.textContent = d.price.toFixed(2);
+      if (chg) {
+        const cls = d.change > 0 ? "up" : (d.change < 0 ? "down" : "flat");
+        chg.className = "chg " + cls;
+        chg.textContent = `${d.change > 0 ? "▲" : (d.change < 0 ? "▼" : "─")}${d.changePct.toFixed(2)}%`;
+      }
+    });
+  } finally { filling = false; }
+}
+
+function updateSaveState() {
+  const healthy = storageHealth();
+  $("saveDot").className = "dot" + (healthy ? "" : " off");
+  $("saveState").textContent = healthy
+    ? `存储正常，已保存 ${records.length} 条记录`
+    : "浏览器存储不可用，保存会失败";
+}
+
+/* ==========================================================================
+   八、按钮与事件
+   ========================================================================== */
+
+$("refreshBtn").addEventListener("click", async () => {
+  toast("正在刷新行情…");
+  await fillPrices();
+  toast("行情已更新", "ok");
+});
+
+$("copyBtn").addEventListener("click", async () => {
+  if (!records.length) { toast("还没有记录可复制", "err"); return; }
+  const cfg = { alerts: records.map(r => ({ code: r.code, type: r.type, dir: r.dir, value: r.value, note: r.note || r.name })) };
+  const text = JSON.stringify(cfg, null, 2);
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(`已复制 ${records.length} 条配置\n可粘到电脑版 config.json`, "ok");
+  } catch (e) { prompt("复制下面的内容：", text); }
+});
+
+let acTimer = null;
+$("code").addEventListener("input", () => {
+  const v = $("code").value;
+  if (picked && v !== picked.code) { picked = null; showPicked(); }
+  clearTimeout(acTimer);
+  acTimer = setTimeout(() => {
+    renderAc(searchStocks(v));
+    if (/^\d{6}$/.test(v.trim()) && !picked) {
+      const hit = STOCKS.find(s => s[0] === v.trim());
+      if (hit) { picked = { code: hit[0], name: hit[1], prefix: hit[2] }; showPicked(); }
+    }
+  }, 90);
+});
+
+$("code").addEventListener("keydown", e => {
+  const box = $("acList");
+  const open = box.className.includes("on");
+  if (e.key === "ArrowDown" && open) { e.preventDefault(); acIndex = Math.min(acIndex + 1, acHits.length - 1); }
+  else if (e.key === "ArrowUp" && open) { e.preventDefault(); acIndex = Math.max(acIndex - 1, 0); }
+  else if (e.key === "Enter") {
+    if (open && acIndex >= 0) { e.preventDefault(); chooseAc(acIndex); return; }
+    if (open && acHits.length) { e.preventDefault(); chooseAc(0); return; }
+    if (picked) { e.preventDefault(); $("value").focus(); }
+    return;
+  } else if (e.key === "Escape") { closeAc(); return; }
+  box.querySelectorAll(".ac-item").forEach((el, i) => el.classList.toggle("sel", i === acIndex));
+});
+
+$("code").addEventListener("blur", () => {
+  setTimeout(() => { if (!acSelecting) closeAc(); }, 180);
+});
+
+$("value").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("saveBtn").click(); } });
+
+/* ---------------- 多行输入框的快捷键 ----------------
+   需求：Enter 必须是换行，不能拿去当提交 —— 否则没法写多行条件。
+   提交改用 Ctrl+Enter（Mac 上 Cmd+Enter 也行）。
+
+   两个容易出事的点：
+   1) 中文输入法打字时也会触发 keydown，必须避开（isComposing / keyCode 229），
+      否则选字时按 Enter 会误提交。
+   2) 只在按了 Ctrl/Cmd 时才拦截，其余情况一律放行，让浏览器插入换行。
+   ------------------------------------------------------------------ */
+function bindMultilineSubmit(el, action) {
+  el.addEventListener("keydown", e => {
+    if (e.isComposing || e.keyCode === 229) return;      // 输入法组合中，交给输入法
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      action();
+    }
+    // Enter（无修饰键）不做任何事 → 浏览器默认插入换行
+  });
+}
+
+bindMultilineSubmit($("askText"), () => $("askBtn").click());
+
+$("type").addEventListener("change", () => {
+  const isPct = $("type").value === "pct";
+  $("valLabel").textContent = isPct ? "触发涨跌幅（%）" : "触发价格（元）";
+  $("value").placeholder = isPct ? "例如 -3 表示跌 3%" : "例如 1300";
+  $("valHint").textContent = isPct ? "填正数会自动按方向补符号，跌 3% 填 3 即可" : "";
+});
+$("type").dispatchEvent(new Event("change"));
+
+/* ==========================================================================
+   九、后台监控推送（自动，无面板）
+   --------------------------------------------------------------------------
+   网页是静态的，没法自己定时。真正的盯盘由本机的 monitor.py 负责，
+   网页通过 serve.py 的接口把提醒交给它。
+
+   设计取舍：不做「开启监控」按钮。
+   只要你有提醒，保存时后台就自动跑起来 —— 用户不需要理解"监控开没开"这件事。
+   状态只在提醒记录那一栏用一行小字带过，出问题才显眼。
+
+   两个必须处理的边界：
+   1) 删光提醒 → 后台要停，不然空转
+   2) 直接双击 index.html（file://）→ 接口不通，要降级提示，不能报一堆错
+   ========================================================================== */
+
+const MON_API = "/api/monitor";
+let monAvailable = null;        // null=还没探测过；false=后台没连上
+let monTimer = null;
+
+async function monFetch(path, body) {
+  // 手机版：没有本地后台，直接抛错，让上层走降级分支（不弹错误）
+  throw new Error("no-local-backend");
+}
+
+/** 在「提醒记录」那栏显示一行监控状态（不显眼，出问题才突出） */
+function renderMonLine(text, warn) {
+  const el = $("monLine");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = warn ? "#ffaa00" : "var(--sub)";
+}
+
+/** 把当前提醒同步给后台；有提醒就确保监控在跑，没提醒就停掉 */
+async function syncAlertsToMonitor(silent) {
+  try {
+    const payload = records.map(r => ({
+      code: r.code, name: r.name, type: r.type, dir: r.dir,
+      value: Number(r.value), note: r.note || "",
+    }));
+    const r = await monFetch("/alerts", { alerts: payload });
+    if (!r || !r.ok) throw new Error((r && r.message) || "同步失败");
+    monAvailable = true;
+
+    // 有提醒就保证监控在跑；删光了就停，别空转
+    if (records.length > 0) {
+      const st = await monFetch("/start", { interval: 20 });
+      const paused = st.pausedReason ? `（${st.pausedReason}自动休眠，开盘自动开始）` : "";
+      renderMonLine(`盯盘中：${records.length} 条提醒已交给后台，关掉网页也会推送到手机${paused}`);
+    } else {
+      await monFetch("/stop", {});
+      renderMonLine("没有提醒，后台已暂停");
+    }
+    return r;
+  } catch (e) {
+    if (monAvailable !== false || !silent) {
+      monAvailable = false;
+      renderMonLine("手机版：提醒存在这台设备上；盯盘和推送在电脑那边跑", false);
+    }
+    return null;
+  }
+}
+
+/** 静默刷新那一行状态（不打断用户） */
+async function refreshMon(silent) {
+  try {
+    const st = await monFetch("/status");
+    monAvailable = true;
+    const paused = st.pausedReason ? `，当前${st.pausedReason}休眠中` : "";
+    const fired = st.triggeredCount ? `，今日已推 ${st.triggeredCount} 条` : "";
+    const chans = (st.channels || []).join("/") || "无推送通道";
+    renderMonLine(st.running
+      ? `盯盘中：${st.alertCount} 条提醒${paused}${fired}　通道 ${chans}`
+      : (records.length ? "提醒已保存，后台监控未运行" : "还没有提醒"));
+    if (!monTimer) {
+      monTimer = setInterval(() => {
+        if (document.visibilityState === "visible") refreshMon(true);
+      }, 5000);
+    }
+    return st;
+  } catch (e) {
+    monAvailable = false;
+    renderMonLine("手机版：提醒存在这台设备上；盯盘和推送在电脑那边跑", false);
+    return null;
+  }
+}
+
+/* 「测试推送」优先走后端（后端发的才是真实推送链路），
+   后端不可用时退回浏览器直发。 */
+$("testBtn").addEventListener("click", async () => {
+  if (monAvailable !== false) {
+    toast("正在通过后台测试推送…");
+    try {
+      const r = await monFetch("/testpush", {});
+      toast(r.message || (r.ok ? "已发送" : "发送失败"), r.ok ? "ok" : "err");
+      await refreshMon(true);
+      return;
+    } catch (e) { /* 落到浏览器直发 */ }
+  }
+  toast("正在测试推送（浏览器直发）…");
+  try {
+    const r = await fetch("https://api.day.app/6ZGDLHHGUiVM52y9F3uL8P/" +
+      encodeURIComponent("干死狗庄 · 到价提醒测试") + "/" +
+      encodeURIComponent("收到这条说明推送通了"));
+    const j = await r.json().catch(() => null);
+    if (j && j.code === 200) toast("已发送，去看看手机", "ok");
+    else toast("推送返回异常：" + JSON.stringify(j).slice(0, 80), "err");
+  } catch (e) {
+    toast("推送失败：" + e.message + "\n（浏览器直连可能被拦，用启动.bat 打开更准）", "err");
+  }
+});
+
+/* ---------------- 启动 ----------------
+   顺序很重要：**先把提醒同步给后台，再读状态**。
+   反过来的话，状态行会显示同步前的旧数字（实测踩过）。
+   ------------------------------------------------------------------ */
+(async function init() {
+  records = readStore();
+  if (!STOCKS.length) toast("股票清单没加载出来（stocks.js 缺失）", "err");
+  updateSaveState();
+  render();
+
+  const r = await syncAlertsToMonitor(true);   // 顺带探测后台是否可用
+  if (r) await refreshMon(true);
+})();
+</script>
+</body>
+</html>
