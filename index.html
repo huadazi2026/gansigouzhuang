@@ -77,8 +77,6 @@
     button.main{font-size:16px;padding:13px}
     .logo{width:34px;height:34px}
     .lead{margin-left:0}
-    .cond-chips{gap:4px}
-    .chip{font-size:11.5px;padding:3px 8px}
   }
 
   .ac{position:relative}
@@ -167,11 +165,6 @@
   .bar{height:4px;background:var(--field);border-radius:3px;overflow:hidden;margin-top:10px;display:none}
   .bar.on{display:block}
   .bar>i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
-  .cond-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-  .chip{background:var(--field);border-radius:7px;padding:4px 9px;font-size:12px;
-    display:flex;align-items:center;gap:5px}
-  .chip b{font-weight:600}
-  .chip .rm{color:var(--sub);cursor:pointer;font-size:14px;line-height:1}
 
   /* 语音输入按钮 */
   .mic{
@@ -367,12 +360,6 @@
       </div>
       <div class="bar" id="askBar"><i></i></div>
       <div class="analysis" id="askOut"></div>
-    </div>
-
-    <div class="card">
-      <h2>可用条件</h2>
-      <div class="hint" style="margin-bottom:8px">这些指标我都能筛选，直接写进上面的框：</div>
-      <div class="cond-chips" id="fieldChips"></div>
     </div>
   </div>
 
@@ -974,7 +961,8 @@ async function runScreenIntent(text, box, bar) {
         <div><span class="k"></span><span>破净的股票</span></div>
       </div>
       <div style="font-size:12.5px;color:var(--sub)">
-        能筛的指标见下面「可用条件」。
+        能筛的指标：现价、涨跌幅、市盈率、市净率、总市值、流通市值、换手率、成交额、成交量、振幅。<br>
+        也能直接写行业名，比如「银行」「白酒」「半导体」。
       </div>
     `);
     return;
@@ -1075,13 +1063,7 @@ new MutationObserver(updateClearBtn).observe($("askOut"),
   { attributes: true, attributeFilter: ["class"] });
 updateClearBtn();
 
-/* 可筛选指标展示 */
-(function renderFieldChips() {
-  const box = $("fieldChips");
-  box.innerHTML = FIELDS.map(f => `<span class="chip"><b>${f.label}</b>${f.unit}</span>`).join("")
-    + Object.keys(INDUSTRY).filter(k => !k.startsWith("_"))
-        .map(k => `<span class="chip">${k}</span>`).join("");
-})();
+/* 可筛选指标的展示区已移除（界面更清爽，指标仍可正常使用） */
 
 /* ==========================================================================
    五之二、按图找相似股票
