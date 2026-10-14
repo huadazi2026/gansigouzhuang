@@ -166,6 +166,11 @@
   .res-main{flex:1;min-width:0}
   .res-name{font-weight:600;font-size:14.5px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
   .res-why{margin-top:3px;font-size:12px;color:var(--sub);line-height:1.5}
+  /* 结构对照：把「为什么是这只」摊开给用户看 */
+  .cmp{margin-top:5px;padding:6px 8px;background:var(--field);border-radius:7px;
+       font-size:11.5px;color:var(--sub);line-height:1.65;
+       font-variant-numeric:tabular-nums}
+  .cmp b{color:var(--fg);font-weight:600}
   .res-right{text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
   .empty{text-align:center;color:var(--sub);padding:22px 8px;font-size:13.5px;line-height:1.7}
   .bar{height:4px;background:var(--field);border-radius:3px;overflow:hidden;margin-top:10px;display:none}
@@ -1241,6 +1246,88 @@ function stdev(arr) {
 }
 
 /**
+ * 提取一段走势的「结构特征」。
+ *
+ * 为什么要这个：光靠皮尔逊相关系数会看走眼。
+ * 实测一个真实案例——用一张「长期上行 → 尖顶 → 急速深跌 → 底部反弹」的周线图扫全市场，
+ * 皮尔逊给出的第一名相关 91.6%，但它「顶前只涨了 33%」，而原图涨了 72%，
+ * 上涨段差了一倍。皮尔逊只看整体起伏同不同步，看不出这种结构差异。
+ *
+ * 所以另外把这几件事量出来：
+ *   顶在哪、底在哪、顶到底隔几根、跌了多少、顶前涨了多少、底后反弹多少
+ */
+function structureOf(seq) {
+  const n = seq.length;
+  if (n < 6) return null;
+
+  let peakI = 0, troughI = 0;
+  for (let i = 1; i < n; i++) {
+    if (seq[i] > seq[peakI]) peakI = i;
+    if (seq[i] < seq[troughI]) troughI = i;
+  }
+  const peakV = seq[peakI], troughV = seq[troughI];
+  if (!(peakV > 0) || !(troughV > 0)) return null;
+
+  return {
+    peakI, troughI, peakV, troughV,
+    // 顶在底之前才算「先涨后跌」，否则这个形态和目标不是一类
+    orderedToFall: troughI > peakI,
+    gap: troughI - peakI,
+    drop: (troughV / peakV - 1) * 100,          // 跌了多少（负数）
+    rise: (peakV / seq[0] - 1) * 100,           // 顶之前涨了多少
+    rebound: (seq[n - 1] / troughV - 1) * 100,  // 底之后反弹多少
+  };
+}
+
+/**
+ * 把「结构差多少」量化成一个分数（越小越像）。
+ *
+ * 每一项都用目标自身的量级做归一化，这样不同形态的图都适用：
+ * 比如顶底间隔，差 2 根对间隔 9 根的形态就算差很多，对间隔 60 根的就不算什么。
+ */
+function structureDiff(target, cand) {
+  if (!target || !cand) return null;
+  // 目标有「先涨后跌」结构，候选没有 → 直接判为不像
+  if (target.orderedToFall && !cand.orderedToFall) return null;
+
+  const norm = (a, b, floor) => Math.min(1, Math.abs(a - b) / Math.max(floor, Math.abs(b) * 0.35));
+
+  const dGap = norm(cand.gap, target.gap, 4);
+  const dDrop = norm(cand.drop, target.drop, 12);
+  const dRise = norm(cand.rise, target.rise, 15);
+  const dReb = norm(cand.rebound, target.rebound, 12);
+
+  return {
+    total: dGap * 1.6 + dDrop * 1.4 + dRise * 0.9 + dReb * 0.6,
+    dGap, dDrop, dRise, dReb,
+    // 顶和底的位置偏差（根数），用来给用户看对齐程度
+    offset: target.orderedToFall
+      ? Math.abs(cand.peakI - target.peakI) + Math.abs(cand.troughI - target.troughI)
+      : 0,
+  };
+}
+
+/**
+ * 综合评分：结构为主，相关系数为辅。
+ *
+ * 权重给结构更高（1.0 : 0.55），因为相关系数高但结构不对的情况实测出现过。
+ * 返回 score 越小越像。
+ */
+function shapeScore(targetStruct, targetZ, win, zWin) {
+  const cand = structureOf(win);
+  const diff = structureDiff(targetStruct, cand);
+  const corr = pearson(targetZ, zWin);
+  if (!diff) {
+    // 结构不符：只用相关系数，但加处罚，避免它挤进前排
+    return { score: (1 - corr) * 1.0 + 2.5, corr, struct: cand, diff: null };
+  }
+  return {
+    score: diff.total + (1 - corr) * 0.55,
+    corr, struct: cand, diff,
+  };
+}
+
+/**
  * 在一条历史序列里找与目标形态最像的窗口。
  * target 已标准化；history 是原始价格序列。
  *
@@ -1250,7 +1337,7 @@ function stdev(arr) {
  * 导致"自己都找不回自己"）。皮尔逊相关系数本身就会归一化尺度，
  * 不需要预筛选；算力上全市场也只是秒级，不值得冒这个风险。
  */
-function bestWindow(target, prices, step = 2) {
+function bestWindow(target, prices, step = 2, targetStruct = null) {
   const L = target.length;
   if (prices.length < L) return null;
   let best = null;
@@ -1258,10 +1345,15 @@ function bestWindow(target, prices, step = 2) {
   for (let start = 0; start + L <= prices.length; start += step) {
     const win = prices.slice(start, start + L);
     const z = standardize(win);
-    const corr = pearson(target, z);
-    if (!best || corr > best.corr) {
+    const r = targetStruct
+      ? shapeScore(targetStruct, target, win, z)
+      : { score: 1 - pearson(target, z), corr: pearson(target, z), struct: null, diff: null };
+    if (!best || r.score < best.score) {
       const chg = (win[win.length - 1] - win[0]) / win[0] * 100;
-      best = { corr, start, end: start + L - 1, window: win, change: chg };
+      best = {
+        score: r.score, corr: r.corr, struct: r.struct, diff: r.diff,
+        start, end: start + L - 1, window: win, change: chg,
+      };
     }
   }
   return best;
@@ -1346,6 +1438,7 @@ async function analyzeImage(file) {
   const target = ChartVision.closeSeries(vision.candles);
   const targetZ = standardize(target);
   const targetChg = seriesChange(target);
+  const targetStruct = structureOf(target);   // 顶/底位置、跌幅、顶前涨幅、底后反弹
   const L = target.length;
 
   lastVision = { target, targetZ, targetChg, L, kltKey, kind };
@@ -1369,11 +1462,14 @@ async function analyzeImage(file) {
     const bars = await fetchKline(code, prefix, kind, lmt);
     if (bars.length < L + 2) { noData++; return; }
     const prices = bars.map(b => b.c);
-    const w = bestWindow(targetZ, prices, kind === "day" ? 2 : 1);
+    const w = bestWindow(targetZ, prices, kind === "day" ? 2 : 1, targetStruct);
     if (!w) { noData++; return; }
     results.push({
       code, name, prefix, bars,
       corr: w.corr,
+      score: w.score,
+      struct: w.struct,
+      diff: w.diff,
       start: w.start, end: w.end,
       change: w.change,
       price: prices[prices.length - 1],
@@ -1392,8 +1488,9 @@ async function analyzeImage(file) {
     return;
   }
 
-  // ---- 3. 排序：形态 / 幅度 ----
-  results.sort((a, b) => b.corr - a.corr);
+  // ---- 3. 排序 ----
+  // 结构分越小越像（顶底位置、跌幅、顶前涨幅都对得上），相关系数只作辅助
+  results.sort((a, b) => a.score - b.score);
   const byShape = results.slice(0, 12);
 
   // 幅度相似：涨跌幅接近，且形态也别太离谱
@@ -1410,8 +1507,9 @@ async function analyzeImage(file) {
   for (const r of checkList) {
     const bars2 = await fetchKline(r.code, r.prefix, kind, lmt);
     const prices2 = bars2.map(b => b.c);
-    const w2 = bestWindow(targetZ, prices2, 1);   // 换 step=1 更细地重算
-    const consistent = w2 && Math.abs(w2.corr - r.corr) < 0.06;
+    const w2 = bestWindow(targetZ, prices2, 1, targetStruct);   // 换 step=1 更细地重算
+    const consistent = w2 && Math.abs(w2.corr - r.corr) < 0.06 &&
+                       w2.diff && r.diff && w2.diff.offset <= r.diff.offset + 2;
     selfCheck.push({
       code: r.code, name: r.name,
       ok: !!consistent,
@@ -1420,35 +1518,64 @@ async function analyzeImage(file) {
     });
   }
   const allOk = selfCheck.every(s => s.ok);
-  const strongEnough = byShape[0].corr >= 0.75;
+  // 判定「有没有找到像的」：结构分够低，且相关性别太低
+  const top = byShape[0];
+  const strongEnough = top.score <= 1.2 && top.corr >= 0.6;
 
   // ---- 5. 输出 ----
   const pct = v => (v * 100).toFixed(1) + "%";
-  const rowHtml = (r, extra) => `
+  const sgn = v => (v > 0 ? "+" : "") + v.toFixed(1) + "%";
+
+  const rowHtml = (r, extra) => {
+    const c = r.struct, d = r.diff;
+    // 结构对照：让用户看到"为什么是这只"，而不是只给一个分数
+    let structLine = "";
+    if (c && targetStruct && targetStruct.orderedToFall) {
+      const okGap = d ? d.dGap < 0.2 : false;
+      const okDrop = d ? d.dDrop < 0.25 : false;
+      const okRise = d ? d.dRise < 0.3 : false;
+      structLine = `
+        <div class="cmp">
+          见顶第 <b>${c.peakI}</b>/${targetStruct.peakI} 根 ${okGap ? "✅" : ""}
+          见底第 <b>${c.troughI}</b>/${targetStruct.troughI} 根
+          ${d ? `（偏离 ${d.offset} 根）` : ""}<br>
+          顶前涨幅 <b>${sgn(c.rise)}</b> / 你的 ${sgn(targetStruct.rise)} ${okRise ? "✅" : ""}　
+          顶到底 <b>${sgn(c.drop)}</b> / 你的 ${sgn(targetStruct.drop)} ${okDrop ? "✅" : ""}<br>
+          底后反弹 <b>${sgn(c.rebound)}</b> / 你的 ${sgn(targetStruct.rebound)}
+        </div>`;
+    }
+    return `
     <div class="res">
       <div class="tick">√</div>
       <div class="res-main">
         <div class="res-name">${esc(r.name)} <span class="ac-code">${esc(r.code)}</span></div>
         <div class="res-why">
-          形态相似度 <b>${pct(r.corr)}</b>　区间涨跌 <b>${r.change > 0 ? "+" : ""}${r.change.toFixed(1)}%</b><br>
+          结构相似度 <b>${pct(Math.max(0, 1 - r.score / 2.5))}</b>　
+          走势相关 <b>${pct(r.corr)}</b>　
+          区间涨跌 <b>${r.change > 0 ? "+" : ""}${r.change.toFixed(1)}%</b><br>
           对应区间 ${esc(r.firstDate)} ~ ${esc(r.lastDateWin)}
-          ${extra || ""}
         </div>
+        ${structLine}
+        ${extra || ""}
       </div>
       <div class="res-right">
         <div class="px">${r.price.toFixed(2)}</div>
         <div class="chg flat">${esc(r.lastDate)}</div>
       </div>
     </div>`;
+  };
 
   const checkHtml = `
     <div class="parsed" style="border-left:3px solid ${allOk ? "#30a350" : "#ffaa00"}">
       <div><span class="k">自检</span><span>
-        ${allOk ? "✅ 已复算前 5 只，结果一致（换用更细的步长重算，形态相似度误差 < 6%）"
+        ${allOk ? "✅ 已复算前 5 只，顶底位置和相似度都对得上"
                 : "⚠️ 部分结果复算有偏差，已标注"}
       </span></div>
       <div><span class="k">样本</span><span>成功比对 ${results.length} 只，无数据 ${noData} 只</span></div>
-      <div><span class="k">形态</span><span>你上传的图共 ${L} 根，区间涨跌 ${targetChg > 0 ? "+" : ""}${targetChg.toFixed(1)}%</span></div>
+      <div><span class="k">你的图</span><span>${L} 根，区间涨跌 ${sgn(targetChg)}${
+        targetStruct && targetStruct.orderedToFall
+          ? `，顶点第 ${targetStruct.peakI} 根、底点第 ${targetStruct.troughI} 根`
+          : ""}</span></div>
     </div>`;
 
   const shapeRows = byShape.map(r => {
@@ -1462,23 +1589,27 @@ async function analyzeImage(file) {
     `　幅度差 ${Math.abs(r.change - targetChg).toFixed(1)} 个百分点`)).join("");
 
   showAnalysis(box, strongEnough ? "ok" : "ask", `
-    <div class="hd">${strongEnough ? "✅" : "🔍"} 找到 ${results.length} 只候选，最像的是 <b>${esc(byShape[0].name)}</b>（${pct(byShape[0].corr)}）</div>
+    <div class="hd">${strongEnough ? "✅" : "🔍"} 找到 ${results.length} 只候选，最像的是 <b>${esc(top.name)}</b>（结构相似度 ${pct(Math.max(0, 1 - top.score / 2.5))}）</div>
     ${checkHtml}
-    ${strongEnough ? "" : `<div class="hint">⚠️ 最高的形态相似度只有 ${pct(byShape[0].corr)}，
-      说明市场里没有和你这张图很像的走势。下面的结果仅供参考，别当结论用。</div>`}
+    ${strongEnough ? "" : `<div class="hint">⚠️ 没找到结构对得上的走势。
+      下面结果只说明"都有涨有跌"，别当结论用。</div>`}
 
-    <div style="font-weight:700;margin:14px 0 2px">一、形态最像（只看形状，不管股价高低）</div>
+    <div style="font-weight:700;margin:14px 0 2px">一、形态最像（顶底位置 + 涨跌结构都对得上）</div>
     ${shapeRows}
 
     <div style="font-weight:700;margin:18px 0 2px">二、形态像 + 涨跌幅也接近</div>
     <div class="hint" style="margin-bottom:4px">
-      你的图区间涨跌 ${targetChg > 0 ? "+" : ""}${targetChg.toFixed(1)}%，下面是幅度最接近的
+      你的图区间涨跌 ${sgn(targetChg)}，下面是幅度最接近的
     </div>
     ${ampRows || '<div class="empty">没有幅度接近的</div>'}
 
     <div class="hint" style="margin-top:14px">
-      形态相似度是皮尔逊相关系数：100% = 走势形状完全一致，80% 以上算很像，
-      70% 以下基本只是"都有涨跌"而已。这个数字只反映形状，不代表未来会涨会跌。
+      排序以<b>结构</b>为主：先看顶和底落在第几根、顶前涨了多少、跌了多少、底后反弹多少；
+      再看整体走势相关度。<br>
+      为什么不用相关系数排第一位：实测过一张「尖顶+急速深跌」的图，
+      相关系数最高的那只（91.6%）顶前只涨了 33%，而原图涨了 72% —— 上涨段差一倍。
+      相关系数看不出这种结构差异，所以只当辅助。<br>
+      这个结果只反映历史走势像不像，<b>不代表未来会涨会跌</b>。
     </div>
   `);
 }
