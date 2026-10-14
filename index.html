@@ -238,12 +238,12 @@
     <!-- 手动添加 -->
     <div class="card">
       <h2><span class="n">A</span>添加提醒</h2>
-      <div class="hint">代码可搜数字、名称、拼音首字母（如 gzmt）。</div>
+      <div class="hint">代码可搜数字、名称、拼音首字母（gzmt）、拼音全拼（maotai）。保存后自动开始盯盘。</div>
 
       <label for="code">股票代码</label>
       <div class="ac">
         <input id="code" type="text" inputmode="search" autocomplete="off" autocapitalize="off"
-               spellcheck="false" placeholder="600519 / 茅台 / gzmt">
+               spellcheck="false" placeholder="600519 / 茅台 / gzmt / maotai">
         <div class="ac-list" id="acList"></div>
       </div>
       <div class="picked" id="picked"></div>
@@ -581,18 +581,52 @@ function parseConditions(text) {
     }
   }
 
-  // ---- 2. 涨跌方向（没有明确数字时，例如「今天涨的股票」）----
+  // ---- 2. 默认阈值的关键词（用户只说词、不说数字）----
+  // 这些是股民的口头说法，不给数字也应该懂。
+  // 放在数字规则之后、涨跌方向之前：明确写了数字的优先。
+  const KEYWORDS = [
+    { re: /破净|跌破净资产|低于净资产/, field: "pb", op: "<", value: 1,
+      raw: "破净（市净率<1）" },
+    { re: /低价股|便宜的股|白菜价/, field: "price", op: "<", value: 5,
+      raw: "低价（现价<5元）" },
+    { re: /高价股/, field: "price", op: ">", value: 100,
+      raw: "高价（现价>100元）" },
+    { re: /小盘股|小市值/, field: "totalCap", op: "<", value: 50,
+      raw: "小盘（总市值<50亿）" },
+    { re: /大盘股|大市值/, field: "totalCap", op: ">", value: 500,
+      raw: "大盘（总市值>500亿）" },
+  ];
+  for (const kw of KEYWORDS) {
+    if (kw.re.test(src) && !rules.some(r => r.field === kw.field)) {
+      const f = FIELDS.find(x => x.key === kw.field);
+      rules.push({ field: kw.field, fieldLabel: f ? f.label : kw.field,
+                   unit: f ? f.unit : "", op: kw.op, value: kw.value ?? kw.val,
+                   raw: kw.raw });
+    }
+  }
+
+  // ---- 3. 涨跌方向 ----
+  // 「涨得猛」「跌得惨」这种带程度副词的，用户意思是"涨/跌了不少"，
+  // 给一个 5% 的默认阈值，比单纯「>0」更贴近真实意图。
   if (!rules.some(r => r.field === "changePct")) {
-    if (/今天涨|上涨的|红的|飘红/.test(src)) {
+    const strongUp = /涨得(?:猛|凶|多|狠|厉害|不错)|大涨|暴涨|涨停/.test(src);
+    const strongDown = /跌得(?:惨|狠|多|凶|厉害)|大跌|暴跌|跌停/.test(src);
+    if (strongUp) {
+      rules.push({ field: "changePct", fieldLabel: "涨跌幅", unit: "%",
+                   op: ">", value: 5, raw: "大涨（涨幅>5%）" });
+    } else if (strongDown) {
+      rules.push({ field: "changePct", fieldLabel: "涨跌幅", unit: "%",
+                   op: "<", value: -5, raw: "大跌（跌幅>5%）" });
+    } else if (/今天涨|上涨的|红的|飘红|涨的/.test(src)) {
       rules.push({ field: "changePct", fieldLabel: "涨跌幅", unit: "%",
                    op: ">", value: 0, raw: "今天上涨" });
-    } else if (/今天跌|下跌的|绿的|飘绿/.test(src)) {
+    } else if (/今天跌|下跌的|绿的|飘绿|跌的/.test(src)) {
       rules.push({ field: "changePct", fieldLabel: "涨跌幅", unit: "%",
                    op: "<", value: 0, raw: "今天下跌" });
     }
   }
 
-  // ---- 3. 行业（近似标签）----
+  // ---- 4. 行业（近似标签）----
   for (const ind of Object.keys(INDUSTRY)) {
     if (ind.startsWith("_")) continue;
     if (src.includes(ind)) {
@@ -602,7 +636,7 @@ function parseConditions(text) {
     }
   }
 
-  // ---- 4. 具体股票名 / 代码 ----
+  // ---- 5. 具体股票名 / 代码 ----
   const stocks = [];
   const codeRe = /\b(\d{6})\b/g;
   let cm;
@@ -1655,7 +1689,8 @@ let acIndex = -1, acHits = [];
 let acSelecting = false;
 
 function searchStocks(q) {
-  let s = q.trim().toLowerCase();
+  const qRaw = q.trim();
+  let s = qRaw.toLowerCase();
   if (!s) return [];
   const pfx = s.match(/^(sh|sz|bj)(\d{3,6})$/);
   if (pfx) s = pfx[2];
@@ -1664,16 +1699,22 @@ function searchStocks(q) {
   for (let i = 0; i < STOCKS.length; i++) {
     const row = STOCKS[i];
     const code = row[0], name = row[1], py = row[3], hot = row[4] || 0;
+    const pyFull = row[5] || "";      // 全拼，老数据没有这个字段就跳过
     let score = -1;
     if (digits) {
       if (code === s) score = 100;
       else if (code.startsWith(s)) score = 70;
       else if (code.includes(s)) score = 30;
     } else {
-      if (name === q.trim()) score = 100;
+      const q = qRaw;
+      if (name === q) score = 100;
+      // 全拼优先于首字母：用户打 maotai 比打 gzmt 更自然
+      else if (pyFull && pyFull === s) score = 92;
+      else if (pyFull && pyFull.startsWith(s)) score = 90;
       else if (py && py.startsWith(s)) score = 88;
-      else if (name.startsWith(q.trim())) score = 85;
-      else if (name.includes(q.trim())) score = 55;
+      else if (name.startsWith(q)) score = 85;
+      else if (name.includes(q)) score = 55;
+      else if (pyFull && pyFull.includes(s)) score = 40;
       else if (py && py.includes(s)) score = 25;
     }
     if (score > 0) {
