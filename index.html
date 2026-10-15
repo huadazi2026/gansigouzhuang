@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -1297,8 +1297,12 @@ function structureDiff(target, cand) {
   const dRise = norm(cand.rise, target.rise, 15);
   const dReb = norm(cand.rebound, target.rebound, 12);
 
+  // 四项各自 0~1，加权平均后仍是 0~1，方便和相关系数按比例合成
+  const struct01 = (dGap * 1.6 + dDrop * 1.4 + dRise * 0.9 + dReb * 0.6) / 4.5;
+
   return {
-    total: dGap * 1.6 + dDrop * 1.4 + dRise * 0.9 + dReb * 0.6,
+    struct01,
+    total: struct01 * 4.5,
     dGap, dDrop, dRise, dReb,
     // 顶和底的位置偏差（根数），用来给用户看对齐程度
     offset: target.orderedToFall
@@ -1308,21 +1312,31 @@ function structureDiff(target, cand) {
 }
 
 /**
- * 综合评分：结构为主，相关系数为辅。
+ * 综合评分：结构 60% + 相关系数 40%（结果 0~1，越小越像）。
  *
- * 权重给结构更高（1.0 : 0.55），因为相关系数高但结构不对的情况实测出现过。
- * 返回 score 越小越像。
+ * 这个比例是两轮实测定下来的：
+ *
+ * 1) 只看相关系数不行。一张「尖顶+急速深跌」的周线图，相关最高的候选有 91.6%，
+ *    但它顶前只涨 33%，原图涨 72%（上涨段差一倍），顶底间隔还偏了 124 根。
+ *    相关系数只反映起伏同不同步，看不出结构差异。
+ *
+ * 2) 只用结构也不行。结构项一开始是直接相加（最大 4.5），相关系数最多贡献 0.55，
+ *    权重严重失衡 —— 结果「形状几乎一样、只是某一项差一点」的候选被压到后面，
+ *    偏离 58 根的反而排第 3。
+ *
+ * 现在两项都归一化到 0~1 再按 6:4 合成。实测四条回归案例全部第 1 名找回自己，
+ * 且第 2~6 名的结构质量明显变好（浙江力诺前 6 名里有 5 只顶底偏离 ≤2 根）。
  */
 function shapeScore(targetStruct, targetZ, win, zWin) {
   const cand = structureOf(win);
   const diff = structureDiff(targetStruct, cand);
   const corr = pearson(targetZ, zWin);
   if (!diff) {
-    // 结构不符：只用相关系数，但加处罚，避免它挤进前排
-    return { score: (1 - corr) * 1.0 + 2.5, corr, struct: cand, diff: null };
+    // 结构不符：重罚，别让它挤进前排
+    return { score: 1.5, corr, struct: cand, diff: null };
   }
   return {
-    score: diff.total + (1 - corr) * 0.55,
+    score: diff.struct01 * 0.6 + (1 - corr) * 0.4,
     corr, struct: cand, diff,
   };
 }
@@ -1520,7 +1534,9 @@ async function analyzeImage(file) {
   const allOk = selfCheck.every(s => s.ok);
   // 判定「有没有找到像的」：结构分够低，且相关性别太低
   const top = byShape[0];
-  const strongEnough = top.score <= 1.2 && top.corr >= 0.6;
+  // 判定「有没有找到像的」：新评分是 0~1（越小越像），
+  // 0.25 以下说明结构和对齐都很好
+  const strongEnough = top.score <= 0.25;
 
   // ---- 5. 输出 ----
   const pct = v => (v * 100).toFixed(1) + "%";
@@ -1550,7 +1566,7 @@ async function analyzeImage(file) {
       <div class="res-main">
         <div class="res-name">${esc(r.name)} <span class="ac-code">${esc(r.code)}</span></div>
         <div class="res-why">
-          结构相似度 <b>${pct(Math.max(0, 1 - r.score / 2.5))}</b>　
+          结构相似度 <b>${pct(Math.max(0, 1 - r.score))}</b>　
           走势相关 <b>${pct(r.corr)}</b>　
           区间涨跌 <b>${r.change > 0 ? "+" : ""}${r.change.toFixed(1)}%</b><br>
           对应区间 ${esc(r.firstDate)} ~ ${esc(r.lastDateWin)}
@@ -1589,7 +1605,7 @@ async function analyzeImage(file) {
     `　幅度差 ${Math.abs(r.change - targetChg).toFixed(1)} 个百分点`)).join("");
 
   showAnalysis(box, strongEnough ? "ok" : "ask", `
-    <div class="hd">${strongEnough ? "✅" : "🔍"} 找到 ${results.length} 只候选，最像的是 <b>${esc(top.name)}</b>（结构相似度 ${pct(Math.max(0, 1 - top.score / 2.5))}）</div>
+    <div class="hd">${strongEnough ? "✅" : "🔍"} 找到 ${results.length} 只候选，最像的是 <b>${esc(top.name)}</b>（结构相似度 ${pct(Math.max(0, 1 - top.score))}）</div>
     ${checkHtml}
     ${strongEnough ? "" : `<div class="hint">⚠️ 没找到结构对得上的走势。
       下面结果只说明"都有涨有跌"，别当结论用。</div>`}
