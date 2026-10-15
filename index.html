@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -631,7 +631,23 @@ function parseConditions(text) {
     }
   }
 
-  // ---- 4. 行业（近似标签）----
+  // ---- 4. 历史新高 / 新低 ----
+  // 这两个条件没有数值（不是"低于几元"），而且行情接口里没有这个字段，
+  // 必须逐只拉历史 K 线才算得出来 —— 所以单独标出来，扫描完之后再核对。
+  //
+  // 一句话里同时出现"新低"和"新高"时，按先出现的那个为准，
+  // 否则会同时加上两条互相矛盾的条件，结果永远是 0 只。
+  const lowM = src.search(/历史新低|历史最低|创新低|新低|最低点/);
+  const highM = src.search(/历史新高|历史最高|创新高|新高|最高点/);
+  if (lowM >= 0 && (highM < 0 || lowM < highM)) {
+    rules.push({ field: "newLow", fieldLabel: "一年内最低", op: "special",
+                 value: 0, raw: "现价接近一年最低", special: true });
+  } else if (highM >= 0) {
+    rules.push({ field: "newHigh", fieldLabel: "一年内最高", op: "special",
+                 value: 0, raw: "现价接近一年最高", special: true });
+  }
+
+  // ---- 5. 行业（近似标签）----
   for (const ind of Object.keys(INDUSTRY)) {
     if (ind.startsWith("_")) continue;
     if (src.includes(ind)) {
@@ -748,6 +764,11 @@ function testRule(rule, q) {
     const list = INDUSTRY[rule.value] || [];
     const ok = list.includes(q.code);
     return { ok, why: ok ? `${rule.value}（近似标签）` : "" };
+  }
+  // 历史新高/新低要拉 K 线才能算，第一轮扫描先放行，
+  // 等扫描完之后由 refineExtremes() 逐只核对。见那里的说明。
+  if (rule.field === "newLow" || rule.field === "newHigh") {
+    return { ok: true, why: "", defer: true };
   }
   const v = q[rule.field];
   if (v == null || !isFinite(v)) {
@@ -1007,7 +1028,8 @@ async function runScreenIntent(text, box, bar) {
       </div>
       <div style="font-size:12.5px;color:var(--sub)">
         能筛的指标：现价、涨跌幅、市盈率、市净率、总市值、流通市值、换手率、成交额、成交量、振幅。<br>
-        也能直接写行业名，比如「银行」「白酒」「半导体」。
+        也能直接写行业名，比如「银行」「白酒」「半导体」；<br>
+        或者写「股价历史新低」「创一年新高的股票」这类（会逐只去拉历史数据核实）。
       </div>
     `);
     return;
@@ -1020,10 +1042,9 @@ async function runScreenIntent(text, box, bar) {
     const market = await getMarket(true, p => {
       bar.firstElementChild.style.width = Math.round(p * 100) + "%";
     });
-    bar.className = "bar";
 
     const all = Object.values(market);
-    const hits = [];
+    let hits = [];
     const unknowns = [];
     for (const q of all) {
       const reasons = [];
@@ -1038,12 +1059,29 @@ async function runScreenIntent(text, box, bar) {
       else if (ok) hits.push({ q, reasons });
     }
 
+    // 「一年内最低/最高」这类条件要拉历史 K 线才算得准，单独走一步。
+    // 这一步会比扫描慢，所以先把进度条挂上再进。
+    let extremeNote = "";
+    if (parsed.rules.some(r => r.special)) {
+      showAnalysis(box, "ask", `<div class="hd">🔍 正在核实历史极值…</div>
+        <div class="hint">行情接口只给今日最高/最低，要判断「一年内最低」得逐只拉历史日线。
+        先粗筛出候选，再逐个核实，需要十几秒到一分钟。</div>`);
+      bar.className = "bar on";
+      const r = await refineExtremes(parsed.rules, hits, p => {
+        bar.firstElementChild.style.width = Math.round(p * 100) + "%";
+      });
+      hits = r.hits;
+      extremeNote = r.note;
+    }
+    bar.className = "bar";
+
     hits.sort((a, b) => b.q.totalCap - a.q.totalCap);
 
     const cap = 60;
     const shown = hits.slice(0, cap);
     const rulesText = parsed.rules.map(r =>
-      r.field === "industry"
+      r.special ? r.raw
+        : r.field === "industry"
         ? `${r.value}（近似标签）`
         : `${r.fieldLabel} ${({ ">": ">", ">=": "≥", "<": "<", "<=": "≤", "==": "=" })[r.op]} ${r.value}${r.unit || ""}`
     ).join("　且　");
@@ -1052,7 +1090,8 @@ async function runScreenIntent(text, box, bar) {
       <div class="hd">${hits.length ? "✅" : "🔍"} 全市场 ${all.length} 只中，符合的有 <b>${hits.length}</b> 只</div>
       <div class="parsed"><div><span class="k">条件</span><span>${esc(rulesText)}</span></div>
       ${parsed.stocks.length ? `<div><span class="k">限定</span><span>${esc(parsed.stocks.map(s => s.name).join("、"))}</span></div>` : ""}
-      <div><span class="k">行情时间</span><span>${esc(shown[0] ? shown[0].q.time : "—")}</span></div></div>
+      <div><span class="k">行情时间</span><span>${esc(shown[0] ? shown[0].q.time : "—")}</span></div>
+      ${extremeNote ? `<div><span class="k">核实过程</span><span>${esc(extremeNote)}</span></div>` : ""}</div>
 
       ${shown.map(x => `
         <div class="res">
@@ -1407,6 +1446,89 @@ async function poolRun(items, worker, limit, onTick) {
 /* ---------------- 主流程 ---------------- */
 
 let lastVision = null;      // 上次识别的结果，供"换周期重找"复用
+
+/**
+ * 核对「一年内最低/最高」。
+ *
+ * 为什么要单独一步：行情接口只给今日的最高/最低，没有"一年内最低"这个字段。
+ * 想算准只能逐只拉历史 K 线 —— 全市场 5500 多只太慢，所以分两步：
+ *
+ *   第一步（粗筛）：今天跌了的才算「可能创新低」。
+ *     一只股票正处于一年新低，当天多半是跌的；当天还涨着的，
+ *     通常是已经从低点反弹起来了，不算"正处于新低"。
+ *     这一步把候选从几千只压到几百只。
+ *   第二步（核实）：对粗筛剩下的逐只拉 260 根日线，算真正的一年内极值。
+ *
+ * 容差 1.5%：允许现价比区间极值差一点点 —— 要求严格相等的话，
+ * "刚创新低又反弹了一点"的股票会被漏掉，而那正是用户想找的。
+ */
+async function refineExtremes(rules, hits, onProgress) {
+  const want = rules.find(r => r.field === "newLow" || r.field === "newHigh");
+  if (!want) return { hits, note: "" };
+
+  const isLow = want.field === "newLow";
+
+  // ---- 第一步：粗筛 ----
+  const pre = hits.filter(x => isLow ? x.q.changePct <= 2 : x.q.changePct >= -2);
+  const dropped = hits.length - pre.length;
+
+  // 核实这一步要逐只拉日线，很慢（每只一个请求）。
+  // 所以粗筛后按成交额排序取前 MAX 只 —— 活跃的股票用户更关心。
+  // 被截掉的会在结果里明确告诉用户，不能让他以为"全市场就这几只"。
+  const MAX = 300;
+  let truncated = 0;
+  let list;
+  if (pre.length > MAX) {
+    const byAmount = pre.slice().sort((a, b) => b.q.amount - a.q.amount);
+    list = byAmount.slice(0, MAX);
+    truncated = pre.length - MAX;
+  } else {
+    list = pre;
+  }
+
+  if (!list.length) {
+    return { hits: [], note: `粗筛后一只不剩（去掉了 ${dropped} 只当天${isLow ? "在涨" : "在跌"}的）` };
+  }
+
+  const TOL = 0.015;
+  const out = [];
+  let done = 0;
+
+  await poolRun(list, async (x) => {
+    const bars = await fetchKline(x.q.code, guessPrefix(x.q.code), "day", 260);
+    done++;
+    if (onProgress && done % 10 === 0) onProgress(done / list.length);
+    if (bars.length < 60) return;        // 次新股样本太少，不比
+
+    const px = x.q.price;
+    if (isLow) {
+      const lo = Math.min(...bars.map(b => b.l));
+      if (px <= lo * (1 + TOL)) {
+        out.push({ ...x, reasons: [...x.reasons,
+          `一年内最低 ${lo.toFixed(2)}，现价 ${px.toFixed(2)}`] });
+      }
+    } else {
+      const hi = Math.max(...bars.map(b => b.h));
+      if (px >= hi * (1 - TOL)) {
+        out.push({ ...x, reasons: [...x.reasons,
+          `一年内最高 ${hi.toFixed(2)}，现价 ${px.toFixed(2)}`] });
+      }
+    }
+  }, 16);
+
+  out.sort((a, b) => b.q.totalCap - a.q.totalCap);
+
+  const bits = [
+    `粗筛 ${hits.length} → ${list.length} 只（去掉当天${isLow ? "在涨" : "在跌"}的 ${dropped} 只）`,
+    `逐只核实 ${list.length} 只的 260 根日线`,
+    `现价与一年内极值相差 1.5% 以内算命中`,
+  ];
+  if (truncated) {
+    bits.push(`另有 ${truncated} 只成交额较小的没核实（这个条件慢，只能取活跃的前 ${MAX} 只）`);
+  }
+
+  return { hits: out, note: bits.join("　·　"), truncated };
+}
 
 async function analyzeImage(file) {
   const box = $("askOut");
